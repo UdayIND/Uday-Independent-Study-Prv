@@ -157,6 +157,34 @@ recon_scanning:
 **Solution**: Ensure Docker Desktop is running (macOS/Windows) or Docker daemon is started (Linux).
 The pipeline will continue without Docker but won't process PCAP files.
 
+## 60-Second Demo Script
+
+Quick demonstration commands:
+
+```bash
+# 1. Preflight check
+make preflight
+
+# 2. Download sample PCAP
+bash scripts/download_tiny_pcap.sh
+
+# 3. Run pipeline
+make run PCAP=data/raw/tiny_sample.pcap
+
+# 4. Verify outputs
+make verify
+
+# 5. View results
+LATEST_RUN=$(ls -t reports/runs/ | head -1)
+cat "reports/runs/$LATEST_RUN/case_report.md"
+cat "reports/runs/$LATEST_RUN/run_manifest.json" | python3 -m json.tool
+```
+
+**Files to open:**
+- `reports/runs/<timestamp>/case_report.md` - Case report with executive summary
+- `reports/runs/<timestamp>/run_manifest.json` - Run metadata and hashes
+- `reports/runs/<timestamp>/agent_trace.jsonl` - Agent orchestration steps
+
 ## Next Steps
 
 1. Read [README.md](README.md) for detailed documentation

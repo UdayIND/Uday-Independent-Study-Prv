@@ -1,4 +1,4 @@
-.PHONY: setup run test clean help docker-build docker-up docker-down verify
+.PHONY: setup run test clean help docker-build docker-up docker-down verify preflight
 
 # Variables
 PYTHON := python3
@@ -9,8 +9,10 @@ PCAP :=
 help:
 	@echo "Available targets:"
 	@echo "  setup          - Install dependencies and setup pre-commit hooks"
+	@echo "  preflight      - Check prerequisites and environment"
 	@echo "  run PCAP=...    - Run the pipeline on a PCAP file"
 	@echo "  test            - Run pytest test suite"
+	@echo "  verify          - Verify pipeline outputs"
 	@echo "  clean           - Remove generated files and caches"
 	@echo "  docker-build    - Build Docker images"
 	@echo "  docker-up       - Start Docker services"
@@ -82,3 +84,6 @@ format:
 
 verify:
 	@bash scripts/verify_run.sh
+
+preflight:
+	@bash scripts/preflight.sh

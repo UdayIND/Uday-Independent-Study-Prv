@@ -33,8 +33,11 @@ This pipeline processes network PCAP files through a multi-stage analysis workfl
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/UdayIND/Uday-Independent-Study-Prv.git
 cd Uday-Independent-Study-Prv
+
+# Run preflight checks
+make preflight
 
 # Install dependencies
 make setup
