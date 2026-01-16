@@ -1,0 +1,27 @@
+# Baseline Detector Configuration
+
+detectors:
+  recon_scanning:
+    enabled: true
+    time_window_seconds: 300  # 5 minutes
+    fan_out_threshold: 50    # unique destination IPs
+    burst_threshold: 100     # connections per second
+    failed_connection_ratio: 0.5  # 50% failed connections
+
+  dns_beaconing:
+    enabled: true
+    time_window_seconds: 600  # 10 minutes
+    repeated_query_threshold: 10  # same domain queried 10+ times
+    periodicity_window_seconds: 3600  # 1 hour
+    nxdomain_ratio_threshold: 0.3  # 30% NXDOMAIN responses
+    min_unique_domains: 3  # minimum domains to consider beaconing
+
+case_assembly:
+  time_window_seconds: 1800  # 30 minutes
+  min_evidence_rows: 5
+  confidence_threshold: 0.6
+
+reporting:
+  max_evidence_rows_per_case: 50
+  include_timeline: true
+  include_metadata: true

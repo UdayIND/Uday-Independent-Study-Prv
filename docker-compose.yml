@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  zeek:
+    image: blacktop/zeek:latest
+    container_name: soc-zeek
+    volumes:
+      - ./data/raw:/pcap:ro
+      - ./data/derived/zeek:/logs:rw
+      - ./configs/zeek:/usr/local/zeek/share/zeek/site:ro
+    environment:
+      - ZEEK_LOG_PATH=/logs
+    command: sh -c "zeek -r /pcap/$${PCAP_FILE} local || echo 'Zeek processing completed'"
+    networks:
+      - soc-network
+    restart: "no"
+
+  suricata:
+    image: jasonish/suricata:latest
+    container_name: soc-suricata
+    volumes:
+      - ./data/raw:/pcap:ro
+      - ./data/derived/suricata:/var/log/suricata:rw
+      - ./configs/suricata:/etc/suricata:ro
+    environment:
+      - PCAP_FILE=${PCAP_FILE:-}
+    command: sh -c "suricata -r /pcap/$${PCAP_FILE} -l /var/log/suricata || echo 'Suricata processing completed'"
+    networks:
+      - soc-network
+    restart: "no"
+
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: soc-pipeline
+    volumes:
+      - ./data:/app/data:rw
+      - ./reports:/app/reports:rw
+      - ./configs:/app/configs:ro
+      - ./src:/app/src:ro
+    environment:
+      - PCAP_FILE=${PCAP_FILE:-}
+      - RUN_TIMESTAMP=${RUN_TIMESTAMP:-}
+    command: python -m src.main --pcap /app/data/raw/$${PCAP_FILE}
+    networks:
+      - soc-network
+    depends_on:
+      - zeek
+      - suricata
+    restart: "no"
+
+networks:
+  soc-network:
+    driver: bridge

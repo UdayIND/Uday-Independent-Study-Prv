@@ -1,0 +1,13 @@
+# PCAP Files Directory
+
+This directory stores PCAP files for pipeline processing.
+
+**Important**: PCAP files are **NOT committed** to the repository (gitignored).
+
+To add a PCAP file:
+1. Place your `.pcap` or `.pcapng` file in this directory
+2. Run the pipeline with: `make run PCAP=data/raw/your_file.pcap`
+
+To download a sample PCAP:
+- Run: `bash scripts/download_sample_pcap.sh` (larger sample)
+- Run: `bash scripts/download_tiny_pcap.sh` (small sample for quick testing)
