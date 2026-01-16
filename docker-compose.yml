@@ -21,15 +21,16 @@ services:
           exit 1;
         fi;
         echo \"Processing PCAP: /pcap/$$PCAP_FILE\";
-        cd /logs && zeek -r \"/pcap/$$PCAP_FILE\" -C local LogAscii::use_json=T LogAscii::json_timestamps=JSON::TS_EPOCH 2>&1;
+        cd /logs;
+        zeek -r \"/pcap/$$PCAP_FILE\" -C local 2>&1;
         if [ -f \"/logs/conn.log\" ]; then
-          LINE_COUNT=$$(wc -l < /logs/conn.log 2>/dev/null || echo 0);
+          LINE_COUNT=$$(wc -l < /logs/conn.log 2>/dev/null | grep -v '^0' || echo 0);
           echo \"✓ Generated conn.log ($$LINE_COUNT lines)\";
         else
           echo \"⚠️  conn.log not generated\";
         fi;
         if [ -f \"/logs/dns.log\" ]; then
-          LINE_COUNT=$$(wc -l < /logs/dns.log 2>/dev/null || echo 0);
+          LINE_COUNT=$$(wc -l < /logs/dns.log 2>/dev/null | grep -v '^0' || echo 0);
           echo \"✓ Generated dns.log ($$LINE_COUNT lines)\";
         fi;
         echo 'Zeek processing completed';
