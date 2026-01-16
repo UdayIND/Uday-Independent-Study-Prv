@@ -39,15 +39,26 @@ make verify
 Results are written to `reports/runs/<timestamp>/`:
 
 - `events.parquet` - Normalized events DataFrame
-- `case_report.md` - Analyst-ready case report
+- `case_report.md` - Analyst-ready case report (links to evaluation report)
 - `run_manifest.json` - Run metadata, PCAP hash, git commit, tool versions
 - `agent_trace.jsonl` - Agent orchestration steps (JSONL)
 - `detections.jsonl` - Baseline detections
+- `evaluation_summary.json` - Evaluation metrics (data health, detection quality, agentic metrics)
+- `evaluation_report.md` - Evaluation report with embedded visualizations
+- `figures/*.png` - 9 evaluation plots (events per minute, top IPs, protocols, DNS, detections, etc.)
 
 Also generates:
 - `data/derived/zeek/conn.log`, `dns.log` (if Docker works)
 - `data/derived/suricata/eve.json` (if Docker works)
 - `data/normalized/events_<timestamp>.parquet`
+
+### Viewing Evaluation Results
+
+Open `reports/runs/<timestamp>/evaluation_report.md` in a markdown viewer to see:
+- Data health metrics (event counts, missing values, top talkers)
+- Detection quality metrics (explainability scores, confidence distributions)
+- Agentic verification metrics (critic checks, evidence retrieval passes)
+- 9 visualizations embedded in the report
 
 ## Configuration
 
@@ -68,6 +79,16 @@ detectors:
 ```bash
 make test
 ```
+
+## Evaluation
+
+After running the pipeline, evaluate the most recent run:
+
+```bash
+make eval
+```
+
+This regenerates evaluation metrics and plots for the latest run directory.
 
 ## Troubleshooting
 

@@ -13,6 +13,7 @@ import yaml
 
 from src.agents.orchestrator import AgentOrchestrator  # noqa: E402
 from src.detect_baseline.detector import BaselineDetector  # noqa: E402
+from src.eval.evaluator import Evaluator  # noqa: E402
 from src.ingest.suricata_parser import SuricataParser  # noqa: E402
 from src.ingest.zeek_parser import ZeekParser  # noqa: E402
 from src.normalize.normalizer import EventNormalizer  # noqa: E402
@@ -102,13 +103,18 @@ def run_pipeline(pcap_path: Path, config_path: Path, output_dir: Path) -> None:
     detections = detector.detect(normalized_df)
     logger.info(f"Generated {len(detections)} detections")
 
+    # Convert detections DataFrame to list of dicts for evaluation
+    detections_list = []
+    if len(detections) > 0:
+        detections_list = detections.to_dict("records")
+
     # Save detections to JSONL
     detections_path = run_dir / "detections.jsonl"
-    if len(detections) > 0:
+    if len(detections_list) > 0:
         with open(detections_path, "w") as f:
-            for _, row in detections.iterrows():
-                f.write(json.dumps(row.to_dict()) + "\n")
-        logger.info(f"Saved {len(detections)} detections to {detections_path}")
+            for det in detections_list:
+                f.write(json.dumps(det) + "\n")
+        logger.info(f"Saved {len(detections_list)} detections to {detections_path}")
     else:
         # Create empty file
         detections_path.touch()
@@ -124,6 +130,12 @@ def run_pipeline(pcap_path: Path, config_path: Path, output_dir: Path) -> None:
     )
     cases = orchestrator.run()
     logger.info(f"Generated {len(cases)} cases")
+
+    # Step 5.5: Evaluation
+    logger.info("Running evaluation...")
+    evaluator = Evaluator(run_dir, config)
+    evaluator.evaluate(normalized_df, detections_list, cases)
+    logger.info("Evaluation completed")
 
     # Step 6: Generate manifest
     logger.info("Generating run manifest...")

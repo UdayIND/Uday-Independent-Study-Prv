@@ -282,4 +282,14 @@ class ReportAgent:
         report_lines.append("   - Escalate to senior analyst if confidence threshold exceeded")
         report_lines.append("")
 
+        # Link to evaluation report
+        report_lines.append("---")
+        report_lines.append("")
+        report_lines.append("## Evaluation")
+        report_lines.append("")
+        report_lines.append(
+            "For detailed metrics and visualizations, see [evaluation_report.md](evaluation_report.md)."
+        )
+        report_lines.append("")
+
         return "\n".join(report_lines)

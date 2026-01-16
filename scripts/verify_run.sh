@@ -106,6 +106,55 @@ else
     echo "⚠️  No Suricata eve.json found (may be empty or processing failed)"
 fi
 
+# Check evaluation outputs
+echo ""
+echo "Checking evaluation outputs..."
+
+if [ -f "$RUN_DIR/evaluation_summary.json" ]; then
+    if [ -s "$RUN_DIR/evaluation_summary.json" ]; then
+        echo "✓ evaluation_summary.json exists and is not empty."
+    else
+        echo "✗ evaluation_summary.json exists but is empty."
+        EXIT_CODE=1
+    fi
+else
+    echo "✗ evaluation_summary.json does not exist."
+    EXIT_CODE=1
+fi
+
+if [ -f "$RUN_DIR/evaluation_report.md" ]; then
+    if [ -s "$RUN_DIR/evaluation_report.md" ]; then
+        echo "✓ evaluation_report.md exists and is not empty."
+        # Check for figure links (at least 3)
+        FIGURE_LINKS=$(grep -c "!\[.*\](figures/.*\.png)" "$RUN_DIR/evaluation_report.md" 2>/dev/null || echo "0")
+        if [ "$FIGURE_LINKS" -ge 3 ] 2>/dev/null; then
+            echo "✓ evaluation_report.md contains at least 3 figure links."
+        else
+            echo "⚠️  evaluation_report.md contains fewer than 3 figure links ($FIGURE_LINKS found)."
+        fi
+    else
+        echo "✗ evaluation_report.md exists but is empty."
+        EXIT_CODE=1
+    fi
+else
+    echo "✗ evaluation_report.md does not exist."
+    EXIT_CODE=1
+fi
+
+# Check figures directory
+FIGURES_DIR="$RUN_DIR/figures"
+if [ -d "$FIGURES_DIR" ]; then
+    PNG_COUNT=$(find "$FIGURES_DIR" -name "*.png" -type f 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$PNG_COUNT" -ge 3 ]; then
+        echo "✓ figures/ directory exists with at least 3 PNG files ($PNG_COUNT found)."
+    else
+        echo "⚠️  figures/ directory exists but has fewer than 3 PNG files ($PNG_COUNT found)."
+    fi
+else
+    echo "✗ figures/ directory does not exist."
+    EXIT_CODE=1
+fi
+
 echo ""
 if [ $ERRORS -eq 0 ]; then
     echo "✅ All required outputs verified successfully!"
@@ -116,6 +165,8 @@ if [ $ERRORS -eq 0 ]; then
     echo "  - Detections: $RUN_DIR/detections.jsonl"
     echo "  - Agent Trace: $RUN_DIR/agent_trace.jsonl"
     echo "  - Events: $RUN_DIR/events.parquet"
+    echo "  - Evaluation Summary: $RUN_DIR/evaluation_summary.json"
+    echo "  - Evaluation Report: $RUN_DIR/evaluation_report.md"
     exit 0
 else
     echo "❌ Verification failed with $ERRORS error(s)"
