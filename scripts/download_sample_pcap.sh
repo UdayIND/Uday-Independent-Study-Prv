@@ -17,7 +17,7 @@ echo "Downloading CTU-13 Neris botnet PCAP sample..."
 echo "Source: Stratosphere Laboratory CTU-13 Dataset"
 
 # Use a reliable public PCAP source
-# Using a small HTTP traffic sample from Wireshark sample captures
+# Using a small HTTP traffic sample from Wireshark test captures
 SAMPLE_URL="https://github.com/wireshark/wireshark/raw/master/test/captures/http.cap"
 
 echo "Downloading sample PCAP from Wireshark test captures..."
@@ -41,9 +41,10 @@ else
 fi
 
 # Verify it's actually a PCAP file
-if ! file "$PCAP_FILE" | grep -qi "pcap\|tcpdump\|capture"; then
+FILE_TYPE=$(file "$PCAP_FILE" 2>/dev/null || echo "unknown")
+if ! echo "$FILE_TYPE" | grep -qiE "pcap|tcpdump|capture|data"; then
     echo "Warning: Downloaded file does not appear to be a PCAP file"
-    echo "File type: $(file "$PCAP_FILE")"
+    echo "File type: $FILE_TYPE"
     echo "Removing invalid file..."
     rm -f "$PCAP_FILE"
     exit 1
