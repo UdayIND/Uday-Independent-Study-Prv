@@ -47,12 +47,24 @@ else
     SKIP_DOCKER=false
 fi
 
+# Ensure directories exist
+mkdir -p "$REPO_ROOT/data/derived/zeek" "$REPO_ROOT/data/derived/suricata" "$REPO_ROOT/data/normalized" "$REPO_ROOT/reports/runs"
+
 # Step 1: Run Zeek
 if [ "$SKIP_DOCKER" = "false" ]; then
     echo "Step 1/3: Running Zeek..."
     export PCAP_FILE="$PCAP_BASENAME"
-    docker compose run --rm zeek || {
-        echo "Warning: Zeek processing completed (may have warnings)"
+    if docker compose run --rm zeek; then
+        echo "✓ Zeek completed successfully"
+    else
+        echo "⚠️  Zeek completed with warnings or errors"
+        # Still continue to validate
+    fi
+
+    # Validate Zeek output
+    echo "Validating Zeek output..."
+    bash "$REPO_ROOT/scripts/validate_telemetry.sh" || {
+        echo "Warning: Zeek telemetry validation failed, but continuing..."
     }
 else
     echo "Step 1/3: Skipping Zeek (Docker not available)"
@@ -62,8 +74,17 @@ fi
 if [ "$SKIP_DOCKER" = "false" ]; then
     echo ""
     echo "Step 2/3: Running Suricata..."
-    docker compose run --rm suricata || {
-        echo "Warning: Suricata processing completed (may have warnings)"
+    if docker compose run --rm suricata; then
+        echo "✓ Suricata completed successfully"
+    else
+        echo "⚠️  Suricata completed with warnings or errors"
+        # Still continue to validate
+    fi
+
+    # Validate Suricata output
+    echo "Validating Suricata output..."
+    bash "$REPO_ROOT/scripts/validate_telemetry.sh" || {
+        echo "Warning: Suricata telemetry validation failed, but continuing..."
     }
 else
     echo "Step 2/3: Skipping Suricata (Docker not available)"

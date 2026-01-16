@@ -1,4 +1,4 @@
-.PHONY: setup run test clean verify preflight eval tune
+.PHONY: setup run test clean verify preflight eval tune docker-rebuild
 
 PYTHON := python3
 PIP := pip3
@@ -76,3 +76,9 @@ endif
 	else \
 		python3 scripts/tune_detectors.py --pcap "$(PCAP)"; \
 	fi
+
+docker-rebuild:
+	@echo "Rebuilding Docker images..."
+	@mkdir -p data/derived/zeek data/derived/suricata data/normalized reports/runs
+	@docker compose build --no-cache
+	@echo "✓ Docker images rebuilt"

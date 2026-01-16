@@ -139,7 +139,20 @@ done
 
 # Check .gitignore
 echo ""
-echo "8. Checking .gitignore..."
+echo "8. Checking Docker images..."
+if docker images | grep -q "blacktop/zeek"; then
+    echo "   ✓ Zeek image available"
+else
+    echo "   ⚠️  Zeek image not found (will be pulled on first run)"
+fi
+if docker images | grep -q "jasonish/suricata"; then
+    echo "   ✓ Suricata image available"
+else
+    echo "   ⚠️  Suricata image not found (will be pulled on first run)"
+fi
+
+echo ""
+echo "9. Checking .gitignore..."
 if [ -f "$REPO_ROOT/.gitignore" ]; then
     if grep -q "data/raw/\*.pcap" "$REPO_ROOT/.gitignore"; then
         echo "   ✓ PCAP files are gitignored"

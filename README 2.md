@@ -92,11 +92,25 @@ This regenerates evaluation metrics and plots for the latest run directory.
 
 ## Troubleshooting
 
-**Zeek/Suricata logs not found**: Ensure Docker is running (`docker info`). Pipeline handles missing logs gracefully.
+**Zeek/Suricata logs not found**:
+- Ensure Docker is running: `docker info`
+- Rebuild Docker images: `make docker-rebuild`
+- Check telemetry validation: `bash scripts/validate_telemetry.sh`
+- View Docker logs: `docker compose logs zeek` and `docker compose logs suricata`
+- Ensure directories exist: `mkdir -p data/derived/zeek data/derived/suricata`
 
-**No detections**: Lower thresholds in `configs/detector.yaml` for testing.
+**No detections**:
+- Lower thresholds in `configs/detector.yaml` for testing
+- Use tuning mode: `make tune PCAP=data/raw/sample.pcap`
+- Check `no_detections_diagnosis.md` for analysis
 
 **PCAP not found**: Place PCAP files in `data/raw/` (gitignored, never committed).
+
+**Docker issues on Mac**:
+- Ensure Docker Desktop is running
+- Check file permissions: containers run as root for write access
+- Verify mounts: `docker compose config` shows volume mappings
+- Clean rebuild: `make docker-rebuild`
 
 ## Multi-Agent Architecture
 

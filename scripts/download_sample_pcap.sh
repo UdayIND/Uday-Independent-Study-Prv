@@ -16,48 +16,36 @@ mkdir -p "$DATA_RAW_DIR"
 echo "Downloading CTU-13 Neris botnet PCAP sample..."
 echo "Source: Stratosphere Laboratory CTU-13 Dataset"
 
-# CTU-13 Dataset URL (using a publicly available mirror)
-# Note: This is a sample from the CTU-13 dataset
-# If this URL doesn't work, we'll try alternative sources
-CTU_URL="https://www.stratosphereips.org/datasets-ctu13"
+# Use a reliable public PCAP source
+# Using a small HTTP traffic sample from Wireshark sample captures
+SAMPLE_URL="https://github.com/wireshark/wireshark/raw/master/test/captures/http.cap"
 
-# Alternative: Use a smaller sample PCAP from a reliable source
-# Using a sample from malware-traffic-analysis.net (public dataset)
-SAMPLE_URL="https://github.com/markofu/pcaps/raw/master/SmallFlows.pcap"
+echo "Downloading sample PCAP from Wireshark test captures..."
 
-# Try downloading from a reliable public PCAP repository
-# Using a small sample from the CICIDS2017 dataset (if available)
-# Or use a direct download from a public PCAP archive
-
-# For now, we'll use a small sample from a public repository
-# This is a small HTTP traffic sample suitable for testing
-FALLBACK_URL="https://github.com/the-tcpdump-group/tcpdump/raw/master/tests/Fixtures/http.cap"
-
-echo "Attempting to download sample PCAP..."
-
-# Try multiple sources
+# Download PCAP
 if command -v curl &> /dev/null; then
-    if curl -L -f -o "$PCAP_FILE" "$SAMPLE_URL" 2>/dev/null; then
-        echo "✓ Downloaded from primary source"
-    elif curl -L -f -o "$PCAP_FILE" "$FALLBACK_URL" 2>/dev/null; then
-        echo "✓ Downloaded from fallback source"
-    else
-        echo "Error: Failed to download PCAP from available sources"
+    if ! curl -L -f -o "$PCAP_FILE" "$SAMPLE_URL" 2>/dev/null; then
+        echo "Error: Failed to download PCAP from $SAMPLE_URL"
         echo "Please manually download a PCAP file and place it in: $DATA_RAW_DIR"
         exit 1
     fi
 elif command -v wget &> /dev/null; then
-    if wget -O "$PCAP_FILE" "$SAMPLE_URL" 2>/dev/null; then
-        echo "✓ Downloaded from primary source"
-    elif wget -O "$PCAP_FILE" "$FALLBACK_URL" 2>/dev/null; then
-        echo "✓ Downloaded from fallback source"
-    else
-        echo "Error: Failed to download PCAP from available sources"
+    if ! wget -O "$PCAP_FILE" "$SAMPLE_URL" 2>/dev/null; then
+        echo "Error: Failed to download PCAP from $SAMPLE_URL"
         echo "Please manually download a PCAP file and place it in: $DATA_RAW_DIR"
         exit 1
     fi
 else
     echo "Error: Neither curl nor wget found. Please install one to download PCAP files."
+    exit 1
+fi
+
+# Verify it's actually a PCAP file
+if ! file "$PCAP_FILE" | grep -qi "pcap\|tcpdump\|capture"; then
+    echo "Warning: Downloaded file does not appear to be a PCAP file"
+    echo "File type: $(file "$PCAP_FILE")"
+    echo "Removing invalid file..."
+    rm -f "$PCAP_FILE"
     exit 1
 fi
 
