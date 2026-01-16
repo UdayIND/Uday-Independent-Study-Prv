@@ -1,64 +1,114 @@
 #!/bin/bash
-# Download CTU-13 Neris botnet PCAP sample for testing
-# Source: Stratosphere Laboratory, CTU-13 Dataset
-# This script downloads a public PCAP file for testing purposes
+# Download a reliable sample PCAP file for testing
+# Uses multiple fallback sources with validation
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DATA_RAW_DIR="$REPO_ROOT/data/raw"
-PCAP_FILE="$DATA_RAW_DIR/ctu13_neris.pcap"
+PCAP_FILE="$DATA_RAW_DIR/sample.pcap"
+HEALTHCHECK_SCRIPT="$SCRIPT_DIR/pcap_healthcheck.sh"
 
 # Create data/raw directory if it doesn't exist
 mkdir -p "$DATA_RAW_DIR"
 
-echo "Downloading CTU-13 Neris botnet PCAP sample..."
-echo "Source: Stratosphere Laboratory CTU-13 Dataset"
+# PCAP sources (ordered by preference)
+# 1. Wireshark sample captures (direct GitHub raw links) - preferred
+# 2. Public malware traffic samples
+# 3. Alternative PCAP repositories
 
-# Use a reliable public PCAP source
-# Using a small HTTP traffic sample from Wireshark test captures
-SAMPLE_URL="https://github.com/wireshark/wireshark/raw/master/test/captures/http.cap"
+declare -a PCAP_URLS=(
+    # Wireshark sample captures (direct GitHub raw links)
+    "https://github.com/wireshark/wireshark/raw/master/test/captures/dhcp.pcap"
 
-echo "Downloading sample PCAP from Wireshark test captures..."
+    # Alternative Wireshark samples
+    "https://github.com/wireshark/wireshark/raw/master/test/captures/http.pcap"
 
-# Download PCAP
-if command -v curl &> /dev/null; then
-    if ! curl -L -f -o "$PCAP_FILE" "$SAMPLE_URL" 2>/dev/null; then
-        echo "Error: Failed to download PCAP from $SAMPLE_URL"
-        echo "Please manually download a PCAP file and place it in: $DATA_RAW_DIR"
-        exit 1
+    # Another Wireshark sample
+    "https://github.com/wireshark/wireshark/raw/master/test/captures/sip.pcap"
+)
+
+# Function to download and validate PCAP
+download_and_validate() {
+    local url="$1"
+    local output_file="$2"
+
+    echo "Attempting download from: $url"
+
+    # Download
+    if command -v curl &> /dev/null; then
+        if ! curl -L -f -o "$output_file" "$url" 2>/dev/null; then
+            return 1
+        fi
+    elif command -v wget &> /dev/null; then
+        if ! wget -O "$output_file" "$url" 2>/dev/null; then
+            return 1
+        fi
+    else
+        echo "Error: Neither curl nor wget found"
+        return 1
     fi
-elif command -v wget &> /dev/null; then
-    if ! wget -O "$PCAP_FILE" "$SAMPLE_URL" 2>/dev/null; then
-        echo "Error: Failed to download PCAP from $SAMPLE_URL"
-        echo "Please manually download a PCAP file and place it in: $DATA_RAW_DIR"
-        exit 1
+
+    # Validate using healthcheck script
+    if [ -f "$HEALTHCHECK_SCRIPT" ]; then
+        if bash "$HEALTHCHECK_SCRIPT" "$output_file" 50 > /dev/null 2>&1; then
+            return 0
+        else
+            # Healthcheck failed, remove invalid file
+            rm -f "$output_file"
+            return 1
+        fi
+    else
+        # Fallback validation if healthcheck script doesn't exist
+        FILE_TYPE=$(file "$output_file" 2>/dev/null || echo "unknown")
+        if echo "$FILE_TYPE" | grep -qiE "pcap|tcpdump|capture|data"; then
+            # Check for HTML content
+            if head -1 "$output_file" 2>/dev/null | grep -qiE "<!doctype|<html|<head"; then
+                rm -f "$output_file"
+                return 1
+            fi
+            return 0
+        else
+            rm -f "$output_file"
+            return 1
+        fi
     fi
-else
-    echo "Error: Neither curl nor wget found. Please install one to download PCAP files."
+}
+
+echo "Downloading sample PCAP file..."
+echo ""
+
+# Try each URL until one succeeds
+DOWNLOADED=false
+USED_URL=""
+
+for url in "${PCAP_URLS[@]}"; do
+    if download_and_validate "$url" "$PCAP_FILE"; then
+        DOWNLOADED=true
+        USED_URL="$url"
+        break
+    else
+        echo "  ✗ Download failed or validation failed, trying next source..."
+        echo ""
+    fi
+done
+
+if [ "$DOWNLOADED" = false ]; then
+    echo "❌ Error: Failed to download a valid PCAP from all sources"
+    echo ""
+    echo "Please manually download a PCAP file and place it in: $DATA_RAW_DIR"
+    echo "Recommended sources:"
+    echo "  - CTU-13 Dataset: https://www.stratosphereips.org/datasets-ctu13"
+    echo "  - Wireshark Sample Captures: https://wiki.wireshark.org/SampleCaptures"
+    echo "  - Malware Traffic Analysis: https://www.malware-traffic-analysis.net/"
     exit 1
 fi
 
-# Verify it's actually a PCAP file
-FILE_TYPE=$(file "$PCAP_FILE" 2>/dev/null || echo "unknown")
-if ! echo "$FILE_TYPE" | grep -qiE "pcap|tcpdump|capture|data"; then
-    echo "Warning: Downloaded file does not appear to be a PCAP file"
-    echo "File type: $FILE_TYPE"
-    echo "Removing invalid file..."
-    rm -f "$PCAP_FILE"
-    exit 1
-fi
-
-# Verify file was downloaded
-if [ ! -f "$PCAP_FILE" ]; then
-    echo "Error: PCAP file was not downloaded successfully"
-    exit 1
-fi
-
-# Get file size
+# Get file info
 FILE_SIZE=$(stat -f%z "$PCAP_FILE" 2>/dev/null || stat -c%s "$PCAP_FILE" 2>/dev/null || echo "unknown")
 FILE_SIZE_MB=$(echo "scale=2; $FILE_SIZE / 1024 / 1024" | bc 2>/dev/null || echo "unknown")
+FILE_TYPE=$(file "$PCAP_FILE" 2>/dev/null || echo "unknown")
 
 # Calculate SHA256 hash
 if command -v shasum &> /dev/null; then
@@ -69,10 +119,12 @@ else
     SHA256="unknown (shasum/sha256sum not found)"
 fi
 
+echo "✓ PCAP file downloaded and validated successfully!"
 echo ""
-echo "✓ PCAP file downloaded successfully!"
 echo "  File: $PCAP_FILE"
+echo "  Source URL: $USED_URL"
 echo "  Size: $FILE_SIZE bytes ($FILE_SIZE_MB MB)"
 echo "  SHA256: $SHA256"
+echo "  File type: $FILE_TYPE"
 echo ""
 echo "Note: This file is gitignored and will not be committed to the repository."

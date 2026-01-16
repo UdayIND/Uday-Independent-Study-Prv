@@ -28,7 +28,7 @@ make setup
 bash scripts/download_sample_pcap.sh
 
 # 3. Run pipeline
-make run PCAP=data/raw/ctu13_neris.pcap
+make run PCAP=data/raw/sample.pcap
 
 # 4. Verify outputs
 make verify
