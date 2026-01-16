@@ -1,4 +1,4 @@
-.PHONY: setup run test clean verify preflight eval
+.PHONY: setup run test clean verify preflight eval tune
 
 PYTHON := python3
 PIP := pip3
@@ -60,4 +60,19 @@ eval:
 		. venv/bin/activate && python3 -c "from src.eval.evaluator import Evaluator; import pandas as pd; import json; from pathlib import Path; run_dir = Path('reports/runs/$$LATEST_RUN'); events_df = pd.read_parquet(run_dir / 'events.parquet'); detections = [json.loads(line) for line in open(run_dir / 'detections.jsonl') if line.strip()]; cases = []; eval = Evaluator(run_dir); eval.evaluate(events_df, detections, cases)"; \
 	else \
 		python3 -c "from src.eval.evaluator import Evaluator; import pandas as pd; import json; from pathlib import Path; run_dir = Path('reports/runs/$$LATEST_RUN'); events_df = pd.read_parquet(run_dir / 'events.parquet'); detections = [json.loads(line) for line in open(run_dir / 'detections.jsonl') if line.strip()]; cases = []; eval = Evaluator(run_dir); eval.evaluate(events_df, detections, cases)"; \
+	fi
+
+tune:
+ifndef PCAP
+	@echo "Error: PCAP variable must be set. Usage: make tune PCAP=data/raw/example.pcap"
+	@exit 1
+endif
+	@if [ ! -f "$(PCAP)" ]; then \
+		echo "Error: PCAP file $(PCAP) not found"; \
+		exit 1; \
+	fi
+	@if [ -d "venv" ]; then \
+		. venv/bin/activate && python3 scripts/tune_detectors.py --pcap "$(PCAP)"; \
+	else \
+		python3 scripts/tune_detectors.py --pcap "$(PCAP)"; \
 	fi

@@ -13,6 +13,7 @@ import yaml
 
 from src.agents.orchestrator import AgentOrchestrator  # noqa: E402
 from src.detect_baseline.detector import BaselineDetector  # noqa: E402
+from src.eval.diagnosis import generate_no_detections_diagnosis  # noqa: E402
 from src.eval.evaluator import Evaluator  # noqa: E402
 from src.ingest.suricata_parser import SuricataParser  # noqa: E402
 from src.ingest.zeek_parser import ZeekParser  # noqa: E402
@@ -119,6 +120,10 @@ def run_pipeline(pcap_path: Path, config_path: Path, output_dir: Path) -> None:
         # Create empty file
         detections_path.touch()
         logger.info("No detections found, created empty detections.jsonl")
+        # Generate diagnosis report
+        diagnosis_path = run_dir / "no_detections_diagnosis.md"
+        generate_no_detections_diagnosis(normalized_df, detector_config, diagnosis_path)
+        logger.info(f"Generated no-detections diagnosis: {diagnosis_path}")
 
     # Step 5: Agent orchestration
     logger.info("Running agent orchestration...")
