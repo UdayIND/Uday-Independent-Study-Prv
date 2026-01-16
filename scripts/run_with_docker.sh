@@ -16,8 +16,15 @@ fi
 PCAP_FILE="$1"
 PCAP_BASENAME=$(basename "$PCAP_FILE")
 
-if [ ! -f "$PCAP_FILE" ]; then
-    echo "Error: PCAP file not found: $PCAP_FILE"
+# Convert to absolute path if relative
+if [[ "$PCAP_FILE" != /* ]]; then
+    PCAP_ABS_PATH="$REPO_ROOT/$PCAP_FILE"
+else
+    PCAP_ABS_PATH="$PCAP_FILE"
+fi
+
+if [ ! -f "$PCAP_ABS_PATH" ]; then
+    echo "Error: PCAP file not found: $PCAP_ABS_PATH"
     exit 1
 fi
 
@@ -66,9 +73,9 @@ fi
 echo ""
 echo "Step 3/3: Running Python pipeline..."
 if [ -d "$REPO_ROOT/venv" ]; then
-    . "$REPO_ROOT/venv/bin/activate" && python3 -m src.main --pcap "$REPO_ROOT/$PCAP_FILE"
+    . "$REPO_ROOT/venv/bin/activate" && python3 -m src.main --pcap "$PCAP_ABS_PATH"
 else
-    python3 -m src.main --pcap "$REPO_ROOT/$PCAP_FILE"
+    python3 -m src.main --pcap "$PCAP_ABS_PATH"
 fi
 
 echo ""

@@ -14,12 +14,13 @@ if [ ! -d "$REPORTS_DIR" ]; then
 fi
 
 # Check if directory is empty
-if [ -z "$(ls -A $REPORTS_DIR 2>/dev/null)" ]; then
+RUN_DIRS=$(ls -A "$REPORTS_DIR" 2>/dev/null | grep -E '^[0-9]{8}_[0-9]{6}$' || true)
+if [ -z "$RUN_DIRS" ]; then
     echo "Error: No run directories found in $REPORTS_DIR"
     exit 1
 fi
 
-LATEST_RUN=$(ls -t "$REPORTS_DIR" 2>/dev/null | head -1)
+LATEST_RUN=$(ls -t "$REPORTS_DIR" 2>/dev/null | grep -E '^[0-9]{8}_[0-9]{6}$' | head -1)
 if [ -z "$LATEST_RUN" ]; then
     echo "Error: Could not determine latest run directory"
     exit 1
@@ -61,8 +62,13 @@ check_file "$RUN_DIR/run_manifest.json" "Run manifest"
 # Check agent trace
 check_file "$RUN_DIR/agent_trace.jsonl" "Agent trace"
 
-# Check detections
-check_file "$RUN_DIR/detections.jsonl" "Detections"
+# Check detections (may be empty if no detections found)
+if [ -f "$RUN_DIR/detections.jsonl" ]; then
+    echo "✓ Found: Detections (may be empty if no detections)"
+else
+    echo "❌ Missing: Detections"
+    ERRORS=$((ERRORS + 1))
+fi
 
 # Check case report
 check_file "$RUN_DIR/case_report.md" "Case report"
