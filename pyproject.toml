@@ -31,6 +31,11 @@ dependencies = [
     "python-dateutil>=2.8.0",
     "pyyaml>=6.0",
     "matplotlib>=3.7.0",
+    "streamlit>=1.30.0",
+    "networkx>=3.0",
+    "pyvis>=0.3.2",
+    "requests>=2.31.0",
+    "neo4j>=5.14.1",
 ]
 
 [project.optional-dependencies]

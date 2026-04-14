@@ -29,9 +29,7 @@ logger = logging.getLogger(__name__)
 def main():
     parser = argparse.ArgumentParser(description="Re-evaluate a pipeline run")
     parser.add_argument("--run-dir", required=True, help="Path to run directory")
-    parser.add_argument(
-        "--config", default="configs/detector.yaml", help="Detector config path"
-    )
+    parser.add_argument("--config", default="configs/detector.yaml", help="Detector config path")
     args = parser.parse_args()
 
     run_dir = Path(args.run_dir)

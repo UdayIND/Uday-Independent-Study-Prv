@@ -54,7 +54,13 @@ def load_config(config_path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def run_pipeline(pcap_path: Path, config_path: Path, output_dir: Path, pcap_label: str = "unknown", expected_sources: list | None = None) -> None:
+def run_pipeline(
+    pcap_path: Path,
+    config_path: Path,
+    output_dir: Path,
+    pcap_label: str = "unknown",
+    expected_sources: list | None = None,
+) -> None:
     """Execute the complete pipeline."""
     logger.info(f"Starting pipeline for PCAP: {pcap_path} (label: {pcap_label})")
 
@@ -252,7 +258,13 @@ def main():
             sys.exit(1)
 
     try:
-        run_pipeline(pcap_path, config_path, output_dir, pcap_label=args.pcap_label, expected_sources=expected_sources)
+        run_pipeline(
+            pcap_path,
+            config_path,
+            output_dir,
+            pcap_label=args.pcap_label,
+            expected_sources=expected_sources,
+        )
     except Exception as e:
         logger.error(f"Pipeline failed: {e}", exc_info=True)
         sys.exit(1)

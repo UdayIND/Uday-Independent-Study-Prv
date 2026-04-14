@@ -98,8 +98,13 @@ class Evaluator:
         # Generate plots
         logger.info("Generating plots...")
         self._generate_plots(
-            normalized_df, detections, cases, data_health, detection_quality,
-            soc_metrics, ground_truth_metrics
+            normalized_df,
+            detections,
+            cases,
+            data_health,
+            detection_quality,
+            soc_metrics,
+            ground_truth_metrics,
         )
 
         # Save evaluation summary
@@ -182,7 +187,9 @@ class Evaluator:
 
         # 11. Evidence completeness
         min_evidence = self.config.get("case_assembly", {}).get("min_evidence_rows", 5)
-        plot_evidence_completeness(cases, min_evidence, self.figures_dir / "evidence_completeness.png")
+        plot_evidence_completeness(
+            cases, min_evidence, self.figures_dir / "evidence_completeness.png"
+        )
 
         # 12. Confusion matrix (if ground truth available)
         if ground_truth_metrics and ground_truth_metrics.get("pcap_label") != "unknown":
@@ -194,10 +201,7 @@ class Evaluator:
         plot_confidence_distribution(cases, self.figures_dir / "confidence_distribution.png")
 
         # 14. Pipeline funnel
-        validated_count = sum(
-            1 for c in cases
-            if c.get("validation", {}).get("is_valid", False)
-        )
+        validated_count = sum(1 for c in cases if c.get("validation", {}).get("is_valid", False))
         plot_agent_pipeline_sankey(
             events_count=len(normalized_df),
             detections_count=len(detections),
@@ -207,7 +211,9 @@ class Evaluator:
         )
 
         # 15. Confidence factor breakdown (if factor scores available)
-        plot_confidence_factor_breakdown(cases, self.figures_dir / "confidence_factor_breakdown.png")
+        plot_confidence_factor_breakdown(
+            cases, self.figures_dir / "confidence_factor_breakdown.png"
+        )
 
         # 16. Detection signal heatmap
         plot_detection_signal_heatmap(detections, self.figures_dir / "detection_signal_heatmap.png")

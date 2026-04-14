@@ -78,15 +78,17 @@ class AgentOrchestrator:
             # Multi-round evidence refinement loop
             while not validation["is_valid"] and rounds < self.max_retries:
                 self._log_trace(
-                    "critic_agent", "request_evidence",
-                    {"case_id": case.get("case_id"), "round": rounds, "issues": validation.get("issues", [])}
+                    "critic_agent",
+                    "request_evidence",
+                    {
+                        "case_id": case.get("case_id"),
+                        "round": rounds,
+                        "issues": validation.get("issues", []),
+                    },
                 )
                 additional_evidence = self.evidence_agent.retrieve_evidence(case, expand=True)
                 # Deduplicate evidence by timestamp + src_ip
-                existing_keys = {
-                    (str(e.get("ts")), str(e.get("src_ip")))
-                    for e in case["evidence"]
-                }
+                existing_keys = {(str(e.get("ts")), str(e.get("src_ip"))) for e in case["evidence"]}
                 for ev in additional_evidence:
                     key = (str(ev.get("ts")), str(ev.get("src_ip")))
                     if key not in existing_keys:

@@ -141,7 +141,9 @@ class BaselineDetector:
                 sec_counts = epoch_secs.value_counts()
                 max_conns_per_sec = int(sec_counts.max()) if len(sec_counts) > 0 else 0
                 burst_detected = max_conns_per_sec >= burst_threshold
-            burst_score = min(1.0, max_conns_per_sec / burst_threshold) if burst_threshold > 0 else 0.0
+            burst_score = (
+                min(1.0, max_conns_per_sec / burst_threshold) if burst_threshold > 0 else 0.0
+            )
 
             # Signal 3: Failed connection ratio
             # Check conn_state field in metadata for failed indicators
@@ -155,23 +157,32 @@ class BaselineDetector:
                 for _, conn_row in bucket_conns.iterrows():
                     try:
                         import json
+
                         meta = json.loads(str(conn_row.get("metadata", "{}")))
-                        if meta.get("conn_state") in {"S0", "REJ", "RSTO", "RSTOS0", "SH", "SHR", "OTH"}:
+                        if meta.get("conn_state") in {
+                            "S0",
+                            "REJ",
+                            "RSTO",
+                            "RSTOS0",
+                            "SH",
+                            "SHR",
+                            "OTH",
+                        }:
                             failed_count += 1
                     except Exception:
                         pass
 
             actual_failed_ratio = failed_count / total_count if total_count > 0 else 0.0
             high_failure = actual_failed_ratio >= failed_connection_ratio
-            failed_conn_score = min(1.0, actual_failed_ratio / failed_connection_ratio) if failed_connection_ratio > 0 else 0.0
+            failed_conn_score = (
+                min(1.0, actual_failed_ratio / failed_connection_ratio)
+                if failed_connection_ratio > 0
+                else 0.0
+            )
 
             # Multi-signal confidence: weighted combination
             # Fan-out is the primary signal (weight 0.5), burst and failed are secondary (0.25 each)
-            confidence = (
-                fan_out_score * 0.5
-                + burst_score * 0.25
-                + failed_conn_score * 0.25
-            )
+            confidence = fan_out_score * 0.5 + burst_score * 0.25 + failed_conn_score * 0.25
             confidence = min(0.95, confidence)
 
             detections.append(
@@ -249,7 +260,7 @@ class BaselineDetector:
 
         # Load all config parameters
         repeated_threshold = self.dns_config.get("repeated_query_threshold", 10)
-        periodicity_window = self.dns_config.get("periodicity_window_seconds", 3600)
+        self.dns_config.get("periodicity_window_seconds", 3600)
         nxdomain_ratio_threshold = self.dns_config.get("nxdomain_ratio_threshold", 0.3)
         min_unique_domains = self.dns_config.get("min_unique_domains", 3)
 
@@ -288,7 +299,8 @@ class BaselineDetector:
         # Signal 4 pre-filter: min_unique_domains
         # Only consider sources querying at least min_unique_domains distinct domains
         qualified_sources = {
-            src_ip for src_ip, stats in src_stats.items()
+            src_ip
+            for src_ip, stats in src_stats.items()
             if stats["unique_domain_count"] >= min_unique_domains
         }
 
@@ -325,7 +337,11 @@ class BaselineDetector:
             stats = src_stats.get(src_ip, {})
             nxdomain_ratio = stats.get("nxdomain_ratio", 0.0)
             high_nxdomain = nxdomain_ratio >= nxdomain_ratio_threshold
-            nxdomain_score = min(1.0, nxdomain_ratio / nxdomain_ratio_threshold) if nxdomain_ratio_threshold > 0 else 0.0
+            nxdomain_score = (
+                min(1.0, nxdomain_ratio / nxdomain_ratio_threshold)
+                if nxdomain_ratio_threshold > 0
+                else 0.0
+            )
 
             # Signal 4: Domain diversity score
             unique_domains = stats.get("unique_domain_count", 0)

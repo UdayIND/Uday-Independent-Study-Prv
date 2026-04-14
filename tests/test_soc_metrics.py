@@ -92,7 +92,9 @@ def sample_normalized_for_soc():
     return pd.DataFrame(data)
 
 
-def test_compression_ratio(sample_detections, sample_cases_with_evidence, sample_normalized_for_soc):
+def test_compression_ratio(
+    sample_detections, sample_cases_with_evidence, sample_normalized_for_soc
+):
     """Test alert-to-case compression ratio."""
     metrics = compute_soc_metrics(
         sample_detections, sample_cases_with_evidence, sample_normalized_for_soc

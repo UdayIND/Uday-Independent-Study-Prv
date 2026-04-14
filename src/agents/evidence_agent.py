@@ -108,9 +108,7 @@ class EvidenceAgent:
         filtered_df = self._score_evidence(filtered_df, case)
 
         # Sort by relevance score (descending), then timestamp
-        filtered_df = filtered_df.sort_values(
-            ["relevance_score", "ts"], ascending=[False, True]
-        )
+        filtered_df = filtered_df.sort_values(["relevance_score", "ts"], ascending=[False, True])
 
         # Limit rows
         if len(filtered_df) > self.max_rows:

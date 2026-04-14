@@ -112,7 +112,7 @@ def run_pipeline_for_pcap(
             logger.warning(f"  Suricata failed: {e}")
 
     # Run Python pipeline
-    logger.info(f"  Running Python pipeline...")
+    logger.info("  Running Python pipeline...")
     cmd = [
         sys.executable,
         "-m",
@@ -232,7 +232,11 @@ def generate_benchmark_report(
 
     if malicious:
         avg_comp = sum(r.get("compression_ratio", 0) for r in malicious) / len(malicious)
-        ev_vals = [r.get("evidence_completeness", 0) for r in malicious if r.get("evidence_completeness") is not None]
+        ev_vals = [
+            r.get("evidence_completeness", 0)
+            for r in malicious
+            if r.get("evidence_completeness") is not None
+        ]
         avg_ev = sum(ev_vals) / len(ev_vals) if ev_vals else 0
         avg_det = sum(r.get("total_detections", 0) for r in malicious) / len(malicious)
         lines.append("### Malicious PCAPs")
@@ -272,11 +276,15 @@ def generate_benchmark_report(
         if effect:
             g_val = effect.get("hedges_g")
             g_str = f"{g_val:.4f}" if g_val is not None else "N/A (insufficient samples)"
-            lines.append(f"**Effect Size (Hedge's g)**: {g_str} ({effect.get('interpretation', 'N/A')})")
+            lines.append(
+                f"**Effect Size (Hedge's g)**: {g_str} ({effect.get('interpretation', 'N/A')})"
+            )
             lines.append(f"- Malicious detection rate: {effect.get('malicious_mean_rate', 0):.4f}")
             lines.append(f"- Benign detection rate: {effect.get('benign_mean_rate', 0):.4f}")
             if effect.get("n_malicious") is not None:
-                lines.append(f"- Samples: n_malicious={effect['n_malicious']}, n_benign={effect['n_benign']}")
+                lines.append(
+                    f"- Samples: n_malicious={effect['n_malicious']}, n_benign={effect['n_benign']}"
+                )
             lines.append("")
 
     # Visualization
@@ -372,17 +380,19 @@ def main():
 
         if not pcap_path.exists():
             logger.warning(f"  PCAP not found: {pcap_path}, skipping")
-            results.append({
-                "name": name,
-                "label": label,
-                "status": "skipped",
-                "total_events": 0,
-                "total_detections": 0,
-                "total_cases": 0,
-                "compression_ratio": 0.0,
-                "evidence_completeness": None,
-                "fp_proxy_detections_per_hour": None,
-            })
+            results.append(
+                {
+                    "name": name,
+                    "label": label,
+                    "status": "skipped",
+                    "total_events": 0,
+                    "total_detections": 0,
+                    "total_cases": 0,
+                    "compression_ratio": 0.0,
+                    "evidence_completeness": None,
+                    "fp_proxy_detections_per_hour": None,
+                }
+            )
             continue
 
         run_dir = run_pipeline_for_pcap(
@@ -395,17 +405,19 @@ def main():
 
         if run_dir is None:
             logger.error(f"  Pipeline failed for {name}")
-            results.append({
-                "name": name,
-                "label": label,
-                "status": "failed",
-                "total_events": 0,
-                "total_detections": 0,
-                "total_cases": 0,
-                "compression_ratio": 0.0,
-                "evidence_completeness": 0.0,
-                "fp_proxy_detections_per_hour": None,
-            })
+            results.append(
+                {
+                    "name": name,
+                    "label": label,
+                    "status": "failed",
+                    "total_events": 0,
+                    "total_detections": 0,
+                    "total_cases": 0,
+                    "compression_ratio": 0.0,
+                    "evidence_completeness": 0.0,
+                    "fp_proxy_detections_per_hour": None,
+                }
+            )
             continue
 
         # Load evaluation summary
@@ -433,9 +445,11 @@ def main():
             "fp_proxy_detections_per_hour": soc.get("fp_proxy_detections_per_hour"),
         }
         results.append(result)
-        print(f"  Events: {result['total_events']}, "
-              f"Detections: {result['total_detections']}, "
-              f"Cases: {result['total_cases']}")
+        print(
+            f"  Events: {result['total_events']}, "
+            f"Detections: {result['total_detections']}, "
+            f"Cases: {result['total_cases']}"
+        )
         print("")
 
     # Generate benchmark report
@@ -457,9 +471,11 @@ def main():
     successful = [r for r in results if r.get("status") == "success"]
     print(f"\nSuccessful: {len(successful)}/{len(results)}")
     for r in successful:
-        print(f"  {r['name']}: {r['total_detections']} detections, "
-              f"{r['total_cases']} cases, "
-              f"compression={r['compression_ratio']:.2f}")
+        print(
+            f"  {r['name']}: {r['total_detections']} detections, "
+            f"{r['total_cases']} cases, "
+            f"compression={r['compression_ratio']:.2f}"
+        )
 
 
 if __name__ == "__main__":

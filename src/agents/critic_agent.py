@@ -30,7 +30,9 @@ class CriticAgent:
         self.confidence_threshold = config.get("confidence_threshold", 0.6)
         self._all_cases = []  # Track all cases for cross-case correlation
 
-    def validate_case(self, case: dict[str, Any], all_cases: list[dict] | None = None) -> dict[str, Any]:
+    def validate_case(
+        self, case: dict[str, Any], all_cases: list[dict] | None = None
+    ) -> dict[str, Any]:
         """Validate that a case has sufficient evidence.
 
         Args:
@@ -169,7 +171,8 @@ class CriticAgent:
         src_ip = case.get("src_ip")
         if src_ip and self._all_cases:
             related_cases = sum(
-                1 for c in self._all_cases
+                1
+                for c in self._all_cases
                 if c.get("src_ip") == src_ip and c.get("case_id") != case.get("case_id")
             )
             factor_scores["cross_case_correlation"] = min(1.0, related_cases / 3.0)
@@ -186,9 +189,7 @@ class CriticAgent:
             "cross_case_correlation": 0.15,
         }
 
-        confidence = sum(
-            factor_scores[k] * weights[k] for k in weights
-        )
+        confidence = sum(factor_scores[k] * weights[k] for k in weights)
 
         return min(1.0, confidence), factor_scores
 

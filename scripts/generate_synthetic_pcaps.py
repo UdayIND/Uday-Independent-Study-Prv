@@ -51,9 +51,7 @@ def generate_scan_pcap(output_path: Path) -> None:
     for i in range(0, 130, 3):
         dst_ip = f"192.168.{i // 256}.{i % 256 + 1}"
         pkt = (
-            Ether()
-            / IP(src=dst_ip, dst=attacker_ip)
-            / TCP(sport=80, dport=RandShort(), flags="RA")
+            Ether() / IP(src=dst_ip, dst=attacker_ip) / TCP(sport=80, dport=RandShort(), flags="RA")
         )
         pkt.time = base_ts + (i * 0.5) + 0.1
         packets.append(pkt)
@@ -163,9 +161,9 @@ def generate_benign_pcap(output_path: Path) -> None:
 
     # Normal HTTP connections to a few web servers
     web_servers = [
-        ("142.250.80.46", 80),   # google
-        ("140.82.121.4", 443),   # github
-        ("151.101.1.69", 443),   # reddit
+        ("142.250.80.46", 80),  # google
+        ("140.82.121.4", 443),  # github
+        ("151.101.1.69", 443),  # reddit
     ]
     for i in range(20):
         server_ip, port = web_servers[i % len(web_servers)]
@@ -268,9 +266,7 @@ def generate_mixed_pcap(output_path: Path) -> None:
     for i in range(0, 80, 2):
         dst_ip = f"192.168.{i // 256}.{i % 256 + 1}"
         pkt = (
-            Ether()
-            / IP(src=dst_ip, dst=attacker_ip)
-            / TCP(sport=80, dport=RandShort(), flags="RA")
+            Ether() / IP(src=dst_ip, dst=attacker_ip) / TCP(sport=80, dport=RandShort(), flags="RA")
         )
         pkt.time = base_ts + 300 + (i * 0.8) + 0.1
         packets.append(pkt)
@@ -297,8 +293,12 @@ def generate_dns_exfil_pcap(output_path: Path) -> None:
 
     # Normal DNS from uninfected client
     normal_domains = [
-        "www.google.com", "mail.google.com", "www.github.com",
-        "cdn.jsdelivr.net", "api.stripe.com", "www.wikipedia.org",
+        "www.google.com",
+        "mail.google.com",
+        "www.github.com",
+        "cdn.jsdelivr.net",
+        "api.stripe.com",
+        "www.wikipedia.org",
     ]
     for i, domain in enumerate(normal_domains):
         pkt = (
@@ -389,12 +389,20 @@ def generate_multi_attacker_pcap(output_path: Path) -> None:
     for i in range(30):
         dst_ip = f"192.168.1.{i + 1}"
         for port in [22, 80, 443]:
-            pkt = Ether() / IP(src=attacker_a, dst=dst_ip) / TCP(sport=RandShort(), dport=port, flags="S")
+            pkt = (
+                Ether()
+                / IP(src=attacker_a, dst=dst_ip)
+                / TCP(sport=RandShort(), dport=port, flags="S")
+            )
             pkt.time = base_ts + (i * 0.3) + (port * 0.005)
             packets.append(pkt)
         # RST from some targets
         if i % 2 == 0:
-            rst = Ether() / IP(src=dst_ip, dst=attacker_a) / TCP(sport=80, dport=RandShort(), flags="RA")
+            rst = (
+                Ether()
+                / IP(src=dst_ip, dst=attacker_a)
+                / TCP(sport=80, dport=RandShort(), flags="RA")
+            )
             rst.time = base_ts + (i * 0.3) + 0.1
             packets.append(rst)
 
@@ -402,7 +410,9 @@ def generate_multi_attacker_pcap(output_path: Path) -> None:
     for i in range(25):
         dst_ip = f"192.168.2.{i + 1}"
         jitter = random.uniform(0, 5)
-        pkt = Ether() / IP(src=attacker_b, dst=dst_ip) / TCP(sport=RandShort(), dport=3389, flags="S")
+        pkt = (
+            Ether() / IP(src=attacker_b, dst=dst_ip) / TCP(sport=RandShort(), dport=3389, flags="S")
+        )
         pkt.time = base_ts + 60 + (i * 8) + jitter
         packets.append(pkt)
 
@@ -411,33 +421,65 @@ def generate_multi_attacker_pcap(output_path: Path) -> None:
     for i in range(35):
         data_hash = hashlib.md5(f"exfil_{i}".encode()).hexdigest()[:12]
         query = f"{data_hash}.{c2_domain}"
-        pkt = Ether() / IP(src=attacker_c, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=query))
+        pkt = (
+            Ether()
+            / IP(src=attacker_c, dst=dns_server)
+            / UDP(sport=RandShort(), dport=53)
+            / DNS(rd=1, qd=DNSQR(qname=query))
+        )
         pkt.time = base_ts + (i * 25) + random.uniform(0, 3)
         packets.append(pkt)
         # NXDOMAIN response
-        resp = Ether() / IP(src=dns_server, dst=attacker_c) / UDP(sport=53, dport=RandShort()) / DNS(qr=1, rcode=3, qd=DNSQR(qname=query))
+        resp = (
+            Ether()
+            / IP(src=dns_server, dst=attacker_c)
+            / UDP(sport=53, dport=RandShort())
+            / DNS(qr=1, rcode=3, qd=DNSQR(qname=query))
+        )
         resp.time = pkt.time + 0.05
         packets.append(resp)
 
     # Normal background traffic from 5 hosts
     web_servers = [("142.250.80.46", 443), ("140.82.121.4", 443), ("151.101.1.69", 80)]
-    normal_domains = ["www.google.com", "mail.google.com", "api.github.com", "www.stackoverflow.com"]
+    normal_domains = [
+        "www.google.com",
+        "mail.google.com",
+        "api.github.com",
+        "www.stackoverflow.com",
+    ]
     for host in normal_hosts:
         for i in range(8):
             server_ip, port = web_servers[i % len(web_servers)]
-            syn = Ether() / IP(src=host, dst=server_ip) / TCP(sport=RandShort(), dport=port, flags="S")
+            syn = (
+                Ether()
+                / IP(src=host, dst=server_ip)
+                / TCP(sport=RandShort(), dport=port, flags="S")
+            )
             syn.time = base_ts + random.uniform(0, 800)
             packets.append(syn)
-            sa = Ether() / IP(src=server_ip, dst=host) / TCP(sport=port, dport=RandShort(), flags="SA")
+            sa = (
+                Ether()
+                / IP(src=server_ip, dst=host)
+                / TCP(sport=port, dport=RandShort(), flags="SA")
+            )
             sa.time = syn.time + 0.05
             packets.append(sa)
             # Complete 3-way handshake
-            ack = Ether() / IP(src=host, dst=server_ip) / TCP(sport=syn[TCP].sport, dport=port, flags="A")
+            ack = (
+                Ether()
+                / IP(src=host, dst=server_ip)
+                / TCP(sport=syn[TCP].sport, dport=port, flags="A")
+            )
             ack.time = sa.time + 0.01
             packets.append(ack)
         for i in range(3):
             domain = normal_domains[i % len(normal_domains)]
-            dns_pkt = Ether() / IP(src=host, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=domain))
+            dns_pkt = (
+                Ether()
+                / IP(src=host, dst=dns_server)
+                / UDP(sport=RandShort(), dport=53)
+                / DNS(rd=1, qd=DNSQR(qname=domain))
+            )
             dns_pkt.time = base_ts + random.uniform(0, 800)
             packets.append(dns_pkt)
 
@@ -464,22 +506,40 @@ def generate_killchain_pcap(output_path: Path) -> None:
     for i in range(20):
         dst_ip = f"192.168.10.{i + 1}"
         for port in [22, 80, 443, 8080]:
-            pkt = Ether() / IP(src=attacker_ip, dst=dst_ip) / TCP(sport=RandShort(), dport=port, flags="S")
+            pkt = (
+                Ether()
+                / IP(src=attacker_ip, dst=dst_ip)
+                / TCP(sport=RandShort(), dport=port, flags="S")
+            )
             pkt.time = base_ts + (i * 3) + (port * 0.01) + random.uniform(0, 0.5)
             packets.append(pkt)
         if i % 3 == 0:
-            rst = Ether() / IP(src=dst_ip, dst=attacker_ip) / TCP(sport=80, dport=RandShort(), flags="RA")
+            rst = (
+                Ether()
+                / IP(src=dst_ip, dst=attacker_ip)
+                / TCP(sport=80, dport=RandShort(), flags="RA")
+            )
             rst.time = base_ts + (i * 3) + 0.2
             packets.append(rst)
 
     # Phase 2: C2 beaconing (10-20 min) - periodic DNS queries
     for i in range(20):
-        pkt = Ether() / IP(src=attacker_ip, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=c2_domain))
+        pkt = (
+            Ether()
+            / IP(src=attacker_ip, dst=dns_server)
+            / UDP(sport=RandShort(), dport=53)
+            / DNS(rd=1, qd=DNSQR(qname=c2_domain))
+        )
         pkt.time = base_ts + 600 + (i * 30) + random.uniform(0, 2)
         packets.append(pkt)
         # Also exfil subdomains
         data = hashlib.md5(f"data_{i}".encode()).hexdigest()[:10]
-        exfil_pkt = Ether() / IP(src=attacker_ip, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=f"{data}.{c2_domain}"))
+        exfil_pkt = (
+            Ether()
+            / IP(src=attacker_ip, dst=dns_server)
+            / UDP(sport=RandShort(), dport=53)
+            / DNS(rd=1, qd=DNSQR(qname=f"{data}.{c2_domain}"))
+        )
         exfil_pkt.time = pkt.time + 2
         packets.append(exfil_pkt)
 
@@ -487,21 +547,37 @@ def generate_killchain_pcap(output_path: Path) -> None:
     internal_targets = [f"192.168.10.{i}" for i in [3, 7, 12, 15, 19]]
     unusual_ports = [4444, 5555, 8443, 9090, 1337]
     for i, (target, port) in enumerate(zip(internal_targets, unusual_ports)):
-        syn = Ether() / IP(src=attacker_ip, dst=target) / TCP(sport=RandShort(), dport=port, flags="S")
+        syn = (
+            Ether()
+            / IP(src=attacker_ip, dst=target)
+            / TCP(sport=RandShort(), dport=port, flags="S")
+        )
         syn.time = base_ts + 1200 + (i * 60) + random.uniform(0, 5)
         packets.append(syn)
-        sa = Ether() / IP(src=target, dst=attacker_ip) / TCP(sport=port, dport=RandShort(), flags="SA")
+        sa = (
+            Ether()
+            / IP(src=target, dst=attacker_ip)
+            / TCP(sport=port, dport=RandShort(), flags="SA")
+        )
         sa.time = syn.time + 0.05
         packets.append(sa)
         # Complete 3-way handshake
-        ack = Ether() / IP(src=attacker_ip, dst=target) / TCP(sport=syn[TCP].sport, dport=port, flags="A")
+        ack = (
+            Ether()
+            / IP(src=attacker_ip, dst=target)
+            / TCP(sport=syn[TCP].sport, dport=port, flags="A")
+        )
         ack.time = sa.time + 0.01
         packets.append(ack)
 
     # Background noise: normal traffic
     normal_host = "10.50.1.10"
     for i in range(15):
-        pkt = Ether() / IP(src=normal_host, dst="142.250.80.46") / TCP(sport=RandShort(), dport=443, flags="S")
+        pkt = (
+            Ether()
+            / IP(src=normal_host, dst="142.250.80.46")
+            / TCP(sport=RandShort(), dport=443, flags="S")
+        )
         pkt.time = base_ts + random.uniform(0, 1800)
         packets.append(pkt)
 
@@ -527,37 +603,71 @@ def generate_slow_scan_pcap(output_path: Path) -> None:
     for i in range(40):
         dst_ip = f"172.16.{i // 256}.{i % 256 + 1}"
         port = [22, 80, 443, 8080, 3306][i % 5]
-        delay = random.uniform(30, 60)
-        pkt = Ether() / IP(src=scanner_ip, dst=dst_ip) / TCP(sport=RandShort(), dport=port, flags="S")
+        random.uniform(30, 60)
+        pkt = (
+            Ether() / IP(src=scanner_ip, dst=dst_ip) / TCP(sport=RandShort(), dport=port, flags="S")
+        )
         pkt.time = base_ts + sum(random.uniform(30, 60) for _ in range(i))
         packets.append(pkt)
         # Some RSTs
         if random.random() < 0.4:
-            rst = Ether() / IP(src=dst_ip, dst=scanner_ip) / TCP(sport=port, dport=RandShort(), flags="RA")
+            rst = (
+                Ether()
+                / IP(src=dst_ip, dst=scanner_ip)
+                / TCP(sport=port, dport=RandShort(), flags="RA")
+            )
             rst.time = pkt.time + 0.1
             packets.append(rst)
 
     # Heavy normal traffic (10x the scan traffic) from 8 hosts
     normal_hosts = [f"10.50.1.{i}" for i in range(10, 18)]
-    web_servers = [("142.250.80.46", 443), ("140.82.121.4", 443), ("151.101.1.69", 80), ("104.16.132.229", 443)]
-    normal_domains = ["www.google.com", "api.github.com", "cdn.cloudflare.com", "www.reddit.com", "docs.python.org"]
+    web_servers = [
+        ("142.250.80.46", 443),
+        ("140.82.121.4", 443),
+        ("151.101.1.69", 80),
+        ("104.16.132.229", 443),
+    ]
+    normal_domains = [
+        "www.google.com",
+        "api.github.com",
+        "cdn.cloudflare.com",
+        "www.reddit.com",
+        "docs.python.org",
+    ]
 
     for host in normal_hosts:
         for i in range(50):
             server_ip, port = web_servers[i % len(web_servers)]
-            syn = Ether() / IP(src=host, dst=server_ip) / TCP(sport=RandShort(), dport=port, flags="S")
+            syn = (
+                Ether()
+                / IP(src=host, dst=server_ip)
+                / TCP(sport=RandShort(), dport=port, flags="S")
+            )
             syn.time = base_ts + random.uniform(0, 1800)
             packets.append(syn)
-            sa = Ether() / IP(src=server_ip, dst=host) / TCP(sport=port, dport=RandShort(), flags="SA")
+            sa = (
+                Ether()
+                / IP(src=server_ip, dst=host)
+                / TCP(sport=port, dport=RandShort(), flags="SA")
+            )
             sa.time = syn.time + 0.03
             packets.append(sa)
             # Complete 3-way handshake
-            ack = Ether() / IP(src=host, dst=server_ip) / TCP(sport=syn[TCP].sport, dport=port, flags="A")
+            ack = (
+                Ether()
+                / IP(src=host, dst=server_ip)
+                / TCP(sport=syn[TCP].sport, dport=port, flags="A")
+            )
             ack.time = sa.time + 0.01
             packets.append(ack)
         for i in range(5):
             domain = normal_domains[i % len(normal_domains)]
-            dns_pkt = Ether() / IP(src=host, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=domain))
+            dns_pkt = (
+                Ether()
+                / IP(src=host, dst=dns_server)
+                / UDP(sport=RandShort(), dport=53)
+                / DNS(rd=1, qd=DNSQR(qname=domain))
+            )
             dns_pkt.time = base_ts + random.uniform(0, 1800)
             packets.append(dns_pkt)
 
@@ -587,24 +697,39 @@ def generate_noisy_benign_pcap(output_path: Path) -> None:
     for i in range(10):
         client_ip = f"203.0.113.{i + 1}"
         for j in range(6):
-            syn = Ether() / IP(src=client_ip, dst=web_server) / TCP(sport=RandShort(), dport=80, flags="S")
+            syn = (
+                Ether()
+                / IP(src=client_ip, dst=web_server)
+                / TCP(sport=RandShort(), dport=80, flags="S")
+            )
             syn.time = base_ts + random.uniform(0, 600)
             packets.append(syn)
-            sa = Ether() / IP(src=web_server, dst=client_ip) / TCP(sport=80, dport=RandShort(), flags="SA")
+            sa = (
+                Ether()
+                / IP(src=web_server, dst=client_ip)
+                / TCP(sport=80, dport=RandShort(), flags="SA")
+            )
             sa.time = syn.time + 0.02
             packets.append(sa)
             # Complete 3-way handshake
-            ack = Ether() / IP(src=client_ip, dst=web_server) / TCP(sport=syn[TCP].sport, dport=80, flags="A")
+            ack = (
+                Ether()
+                / IP(src=client_ip, dst=web_server)
+                / TCP(sport=syn[TCP].sport, dport=80, flags="A")
+            )
             ack.time = sa.time + 0.01
             packets.append(ack)
 
     # Pattern 2: DNS resolver with many unique domains (looks like beaconing)
     resolver = "10.50.1.200"
-    unique_domains = [
-        f"subdomain{i}.example{j}.com" for i in range(20) for j in range(3)
-    ]
+    unique_domains = [f"subdomain{i}.example{j}.com" for i in range(20) for j in range(3)]
     for i, domain in enumerate(unique_domains[:50]):
-        pkt = Ether() / IP(src=resolver, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=domain))
+        pkt = (
+            Ether()
+            / IP(src=resolver, dst=dns_server)
+            / UDP(sport=RandShort(), dport=53)
+            / DNS(rd=1, qd=DNSQR(qname=domain))
+        )
         pkt.time = base_ts + (i * 15) + random.uniform(0, 5)
         packets.append(pkt)
 
@@ -613,7 +738,11 @@ def generate_noisy_benign_pcap(output_path: Path) -> None:
     cdn_endpoints = ["198.51.100.1", "198.51.100.2", "198.51.100.3"]
     for i in range(30):
         for endpoint in cdn_endpoints:
-            pkt = Ether() / IP(src=cdn_monitor, dst=endpoint) / TCP(sport=RandShort(), dport=443, flags="S")
+            pkt = (
+                Ether()
+                / IP(src=cdn_monitor, dst=endpoint)
+                / TCP(sport=RandShort(), dport=443, flags="S")
+            )
             pkt.time = base_ts + (i * 60) + random.uniform(0, 2)
             packets.append(pkt)
 
@@ -621,7 +750,11 @@ def generate_noisy_benign_pcap(output_path: Path) -> None:
     browsers = ["10.50.1.10", "10.50.1.11"]
     for host in browsers:
         for i in range(20):
-            pkt = Ether() / IP(src=host, dst="142.250.80.46") / TCP(sport=RandShort(), dport=443, flags="S")
+            pkt = (
+                Ether()
+                / IP(src=host, dst="142.250.80.46")
+                / TCP(sport=RandShort(), dport=443, flags="S")
+            )
             pkt.time = base_ts + random.uniform(0, 1800)
             packets.append(pkt)
 
@@ -643,7 +776,6 @@ def generate_evasion_ip_rotation_pcap(output_path: Path) -> None:
     base_ts = 1705312200.0
 
     scanner_ips = [f"10.200.3.{i+1}" for i in range(5)]
-    dns_server = "8.8.8.8"
     normal_hosts = ["10.50.1.10", "10.50.1.11", "10.50.1.12"]
 
     # Each scanner hits 12 unique destinations (below fan_out_threshold of 15)
@@ -651,12 +783,20 @@ def generate_evasion_ip_rotation_pcap(output_path: Path) -> None:
         for i in range(12):
             dst_ip = f"192.168.{idx}.{i + 1}"
             for port in [22, 80, 443]:
-                pkt = Ether() / IP(src=scanner, dst=dst_ip) / TCP(sport=RandShort(), dport=port, flags="S")
+                pkt = (
+                    Ether()
+                    / IP(src=scanner, dst=dst_ip)
+                    / TCP(sport=RandShort(), dport=port, flags="S")
+                )
                 pkt.time = base_ts + (idx * 120) + (i * 2) + (port * 0.01) + random.uniform(0, 0.5)
                 packets.append(pkt)
             # Some RSTs
             if i % 3 == 0:
-                rst = Ether() / IP(src=dst_ip, dst=scanner) / TCP(sport=80, dport=RandShort(), flags="RA")
+                rst = (
+                    Ether()
+                    / IP(src=dst_ip, dst=scanner)
+                    / TCP(sport=80, dport=RandShort(), flags="RA")
+                )
                 rst.time = base_ts + (idx * 120) + (i * 2) + 0.1
                 packets.append(rst)
 
@@ -699,23 +839,40 @@ def generate_evasion_jittery_beacon_pcap(output_path: Path) -> None:
     normal_hosts = ["10.50.1.10", "10.50.1.11"]
 
     legit_domains = [
-        "www.google.com", "mail.google.com", "cdn.jsdelivr.net",
-        "api.github.com", "fonts.googleapis.com", "www.stackoverflow.com",
-        "docs.python.org", "pypi.org", "www.npmjs.com", "registry.npmjs.org",
+        "www.google.com",
+        "mail.google.com",
+        "cdn.jsdelivr.net",
+        "api.github.com",
+        "fonts.googleapis.com",
+        "www.stackoverflow.com",
+        "docs.python.org",
+        "pypi.org",
+        "www.npmjs.com",
+        "registry.npmjs.org",
     ]
 
     # Jittery beaconing: 30 beacon queries with high timing variance
     current_time = base_ts
     for i in range(30):
         # Beacon query to C2
-        pkt = Ether() / IP(src=beaconer_ip, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=c2_domain))
+        pkt = (
+            Ether()
+            / IP(src=beaconer_ip, dst=dns_server)
+            / UDP(sport=RandShort(), dport=53)
+            / DNS(rd=1, qd=DNSQR(qname=c2_domain))
+        )
         pkt.time = current_time
         packets.append(pkt)
 
         # Intersperse legitimate query (50% of the time)
         if random.random() < 0.5:
             legit_domain = random.choice(legit_domains)
-            legit_pkt = Ether() / IP(src=beaconer_ip, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=legit_domain))
+            legit_pkt = (
+                Ether()
+                / IP(src=beaconer_ip, dst=dns_server)
+                / UDP(sport=RandShort(), dport=53)
+                / DNS(rd=1, qd=DNSQR(qname=legit_domain))
+            )
             legit_pkt.time = current_time + random.uniform(1, 5)
             packets.append(legit_pkt)
 
@@ -727,7 +884,12 @@ def generate_evasion_jittery_beacon_pcap(output_path: Path) -> None:
     for host in normal_hosts:
         for i in range(20):
             domain = random.choice(legit_domains)
-            pkt = Ether() / IP(src=host, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=domain))
+            pkt = (
+                Ether()
+                / IP(src=host, dst=dns_server)
+                / UDP(sport=RandShort(), dport=53)
+                / DNS(rd=1, qd=DNSQR(qname=domain))
+            )
             pkt.time = base_ts + random.uniform(0, 1200)
             packets.append(pkt)
 
@@ -771,22 +933,36 @@ def generate_evasion_slow_drip_pcap(output_path: Path) -> None:
     normal_hosts = [f"10.50.1.{i}" for i in range(10, 15)]
 
     legit_domains = [
-        "www.google.com", "mail.google.com", "cdn.jsdelivr.net",
-        "api.github.com", "www.stackoverflow.com", "docs.python.org",
+        "www.google.com",
+        "mail.google.com",
+        "cdn.jsdelivr.net",
+        "api.github.com",
+        "www.stackoverflow.com",
+        "docs.python.org",
     ]
 
     # Slow drip: 12 queries over 1 hour (every 5 minutes)
     for i in range(12):
         data_hash = hashlib.md5(f"slow_exfil_{i}".encode()).hexdigest()[:8]
         query = f"{data_hash}.{c2_domain}"
-        pkt = Ether() / IP(src=exfiltrator_ip, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=query))
+        pkt = (
+            Ether()
+            / IP(src=exfiltrator_ip, dst=dns_server)
+            / UDP(sport=RandShort(), dport=53)
+            / DNS(rd=1, qd=DNSQR(qname=query))
+        )
         pkt.time = base_ts + (i * 300) + random.uniform(0, 30)
         packets.append(pkt)
 
     # Also some legit DNS from the exfiltrator to blend in
     for i in range(15):
         domain = random.choice(legit_domains)
-        pkt = Ether() / IP(src=exfiltrator_ip, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=domain))
+        pkt = (
+            Ether()
+            / IP(src=exfiltrator_ip, dst=dns_server)
+            / UDP(sport=RandShort(), dport=53)
+            / DNS(rd=1, qd=DNSQR(qname=domain))
+        )
         pkt.time = base_ts + random.uniform(0, 3600)
         packets.append(pkt)
 
@@ -796,7 +972,12 @@ def generate_evasion_slow_drip_pcap(output_path: Path) -> None:
         # DNS
         for i in range(30):
             domain = random.choice(legit_domains)
-            pkt = Ether() / IP(src=host, dst=dns_server) / UDP(sport=RandShort(), dport=53) / DNS(rd=1, qd=DNSQR(qname=domain))
+            pkt = (
+                Ether()
+                / IP(src=host, dst=dns_server)
+                / UDP(sport=RandShort(), dport=53)
+                / DNS(rd=1, qd=DNSQR(qname=domain))
+            )
             pkt.time = base_ts + random.uniform(0, 3600)
             packets.append(pkt)
         # TCP with complete handshake

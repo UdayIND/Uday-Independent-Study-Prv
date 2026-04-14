@@ -28,20 +28,32 @@ RESEARCH_COLORS = {
     "info": "#3498db",
     "muted": "#95a5a6",
 }
-RESEARCH_PALETTE = ["#2c3e50", "#e74c3c", "#27ae60", "#f39c12", "#3498db", "#95a5a6",
-                    "#8e44ad", "#1abc9c", "#d35400", "#2980b9"]
+RESEARCH_PALETTE = [
+    "#2c3e50",
+    "#e74c3c",
+    "#27ae60",
+    "#f39c12",
+    "#3498db",
+    "#95a5a6",
+    "#8e44ad",
+    "#1abc9c",
+    "#d35400",
+    "#2980b9",
+]
 
 
 def _set_research_style():
     """Apply consistent research styling to current figure."""
-    plt.rcParams.update({
-        "font.size": 11,
-        "axes.titlesize": 14,
-        "axes.labelsize": 12,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "legend.fontsize": 10,
-    })
+    plt.rcParams.update(
+        {
+            "font.size": 11,
+            "axes.titlesize": 14,
+            "axes.labelsize": 12,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "legend.fontsize": 10,
+        }
+    )
 
 
 def plot_events_per_minute(normalized_df: pd.DataFrame, output_path: Path) -> None:
@@ -63,19 +75,39 @@ def plot_events_per_minute(normalized_df: pd.DataFrame, output_path: Path) -> No
     fig, ax = plt.subplots(figsize=(10, 6))
 
     if len(events_per_minute) <= 1:
-        ax.bar(range(len(events_per_minute)), events_per_minute.values,
-               color=RESEARCH_COLORS["primary"], edgecolor="black", width=0.5)
+        ax.bar(
+            range(len(events_per_minute)),
+            events_per_minute.values,
+            color=RESEARCH_COLORS["primary"],
+            edgecolor="black",
+            width=0.5,
+        )
         ax.set_xticks(range(len(events_per_minute)))
         ax.set_xticklabels([str(t)[:19] for t in events_per_minute.index], rotation=45, ha="right")
         total = int(events_per_minute.values[0]) if len(events_per_minute) > 0 else 0
-        ax.annotate(f"N={total} events\n(single time window)",
-                    xy=(0, total), xytext=(0.3, total * 0.8),
-                    fontsize=11, fontweight="bold", color=RESEARCH_COLORS["info"])
+        ax.annotate(
+            f"N={total} events\n(single time window)",
+            xy=(0, total),
+            xytext=(0.3, total * 0.8),
+            fontsize=11,
+            fontweight="bold",
+            color=RESEARCH_COLORS["info"],
+        )
     else:
-        ax.plot(events_per_minute.index, events_per_minute.values,
-                linewidth=2, color=RESEARCH_COLORS["primary"], marker="o", markersize=4)
-        ax.fill_between(events_per_minute.index, events_per_minute.values,
-                         alpha=0.15, color=RESEARCH_COLORS["primary"])
+        ax.plot(
+            events_per_minute.index,
+            events_per_minute.values,
+            linewidth=2,
+            color=RESEARCH_COLORS["primary"],
+            marker="o",
+            markersize=4,
+        )
+        ax.fill_between(
+            events_per_minute.index,
+            events_per_minute.values,
+            alpha=0.15,
+            color=RESEARCH_COLORS["primary"],
+        )
 
     ax.set_xlabel("Time")
     ax.set_ylabel("Events per Minute")
@@ -110,8 +142,14 @@ def plot_top_ips(normalized_df: pd.DataFrame, column: str, output_path: Path, ti
     ax.invert_yaxis()
 
     for bar, val in zip(bars, top_ips.values):
-        ax.text(bar.get_width() + max(top_ips.values) * 0.01, bar.get_y() + bar.get_height() / 2,
-                str(int(val)), va="center", fontsize=9, color=RESEARCH_COLORS["primary"])
+        ax.text(
+            bar.get_width() + max(top_ips.values) * 0.01,
+            bar.get_y() + bar.get_height() / 2,
+            str(int(val)),
+            va="center",
+            fontsize=9,
+            color=RESEARCH_COLORS["primary"],
+        )
 
     ax.grid(True, alpha=0.3, axis="x")
     plt.tight_layout()
@@ -132,7 +170,7 @@ def plot_protocol_breakdown(normalized_df: pd.DataFrame, output_path: Path) -> N
 
     _set_research_style()
     fig, ax = plt.subplots(figsize=(8, 8))
-    colors = RESEARCH_PALETTE[:len(proto_counts)]
+    colors = RESEARCH_PALETTE[: len(proto_counts)]
     wedges, texts, autotexts = ax.pie(
         proto_counts.values,
         labels=proto_counts.index,
@@ -164,7 +202,7 @@ def plot_dns_top_domains(dns_stats: dict[str, Any], output_path: Path) -> None:
     _set_research_style()
     fig, ax = plt.subplots(figsize=(10, 6))
     colors = [RESEARCH_PALETTE[i % len(RESEARCH_PALETTE)] for i in range(len(domains))]
-    bars = ax.barh(range(len(domains)), counts, color=colors, edgecolor="black", alpha=0.85)
+    ax.barh(range(len(domains)), counts, color=colors, edgecolor="black", alpha=0.85)
     ax.set_yticks(range(len(domains)))
     ax.set_yticklabels(domains)
     ax.set_xlabel("Query Count")
@@ -189,8 +227,13 @@ def plot_suricata_alerts_by_signature(suricata_stats: dict[str, Any], output_pat
 
     _set_research_style()
     fig, ax = plt.subplots(figsize=(12, 6))
-    bars = ax.barh(range(len(signatures)), counts, color=RESEARCH_COLORS["secondary"],
-                   edgecolor="black", alpha=0.85)
+    ax.barh(
+        range(len(signatures)),
+        counts,
+        color=RESEARCH_COLORS["secondary"],
+        edgecolor="black",
+        alpha=0.85,
+    )
     ax.set_yticks(range(len(signatures)))
     ax.set_yticklabels(signatures)
     ax.set_xlabel("Alert Count")
@@ -230,18 +273,37 @@ def plot_detections_over_time(detections: list[dict[str, Any]], output_path: Pat
         for i, dt in enumerate(unique_types):
             mask = det_types == dt
             color = RESEARCH_PALETTE[i % len(RESEARCH_PALETTE)]
-            ax.scatter(ts_valid[mask], [1] * mask.sum(), s=200, c=color, marker="D",
-                      edgecolors="black", zorder=5, label=dt)
+            ax.scatter(
+                ts_valid[mask],
+                [1] * mask.sum(),
+                s=200,
+                c=color,
+                marker="D",
+                edgecolors="black",
+                zorder=5,
+                label=dt,
+            )
         ax.set_yticks([1])
         ax.set_yticklabels(["Detection"])
-        ax.annotate(f"N={len(ts_valid)} detection(s)", xy=(0.02, 0.95),
-                   xycoords="axes fraction", fontsize=11, fontweight="bold",
-                   color=RESEARCH_COLORS["info"])
+        ax.annotate(
+            f"N={len(ts_valid)} detection(s)",
+            xy=(0.02, 0.95),
+            xycoords="axes fraction",
+            fontsize=11,
+            fontweight="bold",
+            color=RESEARCH_COLORS["info"],
+        )
     else:
         ts_valid.index = ts_valid
         detections_per_minute = ts_valid.resample("1min").count()
-        ax.plot(detections_per_minute.index, detections_per_minute.values,
-                marker="o", linewidth=2, color=RESEARCH_COLORS["secondary"], markersize=6)
+        ax.plot(
+            detections_per_minute.index,
+            detections_per_minute.values,
+            marker="o",
+            linewidth=2,
+            color=RESEARCH_COLORS["secondary"],
+            markersize=6,
+        )
         ax.set_ylabel("Detections per Minute")
 
     ax.set_xlabel("Time")
@@ -271,8 +333,14 @@ def plot_detections_by_type(detections: list[dict[str, Any]], output_path: Path)
     _set_research_style()
     fig, ax = plt.subplots(figsize=(10, 6))
     colors = [RESEARCH_PALETTE[i % len(RESEARCH_PALETTE)] for i in range(len(type_counts))]
-    bars = ax.bar(range(len(type_counts)), type_counts.values, color=colors,
-                  edgecolor="black", width=0.6, alpha=0.85)
+    bars = ax.bar(
+        range(len(type_counts)),
+        type_counts.values,
+        color=colors,
+        edgecolor="black",
+        width=0.6,
+        alpha=0.85,
+    )
     ax.set_xticks(range(len(type_counts)))
     ax.set_xticklabels(type_counts.index, rotation=45, ha="right")
     ax.set_xlabel("Detection Type")
@@ -281,8 +349,15 @@ def plot_detections_by_type(detections: list[dict[str, Any]], output_path: Path)
     ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
 
     for bar, val in zip(bars, type_counts.values):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.05,
-                str(int(val)), ha="center", va="bottom", fontsize=11, fontweight="bold")
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.05,
+            str(int(val)),
+            ha="center",
+            va="bottom",
+            fontsize=11,
+            fontweight="bold",
+        )
 
     ax.grid(True, alpha=0.3, axis="y")
     plt.tight_layout()
@@ -313,24 +388,51 @@ def plot_cases_by_confidence(cases: list[dict[str, Any]], output_path: Path) -> 
 
     if len(confidences) <= 3:
         # Few cases: bar chart per case instead of histogram
-        colors = [RESEARCH_COLORS["success"] if c >= 0.6 else
-                  RESEARCH_COLORS["warning"] if c >= 0.4 else
-                  RESEARCH_COLORS["secondary"] for c in confidences]
-        bars = ax.bar(range(len(case_ids)), confidences, color=colors,
-                      edgecolor="black", width=0.5, alpha=0.85)
+        colors = [
+            RESEARCH_COLORS["success"]
+            if c >= 0.6
+            else RESEARCH_COLORS["warning"]
+            if c >= 0.4
+            else RESEARCH_COLORS["secondary"]
+            for c in confidences
+        ]
+        bars = ax.bar(
+            range(len(case_ids)),
+            confidences,
+            color=colors,
+            edgecolor="black",
+            width=0.5,
+            alpha=0.85,
+        )
         ax.set_xticks(range(len(case_ids)))
         ax.set_xticklabels(case_ids, rotation=45, ha="right")
         ax.set_xlabel("Case ID")
-        ax.axhline(y=0.6, color=RESEARCH_COLORS["muted"], linestyle="--",
-                   linewidth=1.5, label="Threshold (0.6)")
+        ax.axhline(
+            y=0.6,
+            color=RESEARCH_COLORS["muted"],
+            linestyle="--",
+            linewidth=1.5,
+            label="Threshold (0.6)",
+        )
         for bar, val in zip(bars, confidences):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,
-                    f"{val:.2f}", ha="center", va="bottom", fontsize=11, fontweight="bold")
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.01,
+                f"{val:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=11,
+                fontweight="bold",
+            )
     else:
-        ax.hist(confidences, bins=10, edgecolor="black", alpha=0.7,
-                color=RESEARCH_COLORS["info"])
-        ax.axvline(x=0.6, color=RESEARCH_COLORS["secondary"], linestyle="--",
-                   linewidth=2, label="Threshold (0.6)")
+        ax.hist(confidences, bins=10, edgecolor="black", alpha=0.7, color=RESEARCH_COLORS["info"])
+        ax.axvline(
+            x=0.6,
+            color=RESEARCH_COLORS["secondary"],
+            linestyle="--",
+            linewidth=2,
+            label="Threshold (0.6)",
+        )
         ax.set_xlabel("Confidence Score")
 
     ax.set_ylabel("Number of Cases")
@@ -365,7 +467,10 @@ def plot_compression_ratio(soc_metrics: dict[str, Any], output_path: Path) -> No
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + max(values) * 0.02,
             str(val),
-            ha="center", va="bottom", fontweight="bold", fontsize=14,
+            ha="center",
+            va="bottom",
+            fontweight="bold",
+            fontsize=14,
         )
 
     ratio = soc_metrics.get("compression_ratio", 0.0)
@@ -393,21 +498,34 @@ def plot_evidence_completeness(
         evidence_counts.append(len(case.get("evidence", [])))
 
     _set_research_style()
-    colors = [RESEARCH_COLORS["success"] if c >= min_evidence else RESEARCH_COLORS["secondary"]
-              for c in evidence_counts]
+    colors = [
+        RESEARCH_COLORS["success"] if c >= min_evidence else RESEARCH_COLORS["secondary"]
+        for c in evidence_counts
+    ]
 
     fig, ax = plt.subplots(figsize=(10, max(4, len(cases) * 0.6)))
-    bars = ax.barh(range(len(case_ids)), evidence_counts, color=colors,
-                   edgecolor="black", alpha=0.85)
+    bars = ax.barh(
+        range(len(case_ids)), evidence_counts, color=colors, edgecolor="black", alpha=0.85
+    )
     ax.set_yticks(range(len(case_ids)))
     ax.set_yticklabels(case_ids)
-    ax.axvline(x=min_evidence, color=RESEARCH_COLORS["warning"], linestyle="--",
-               linewidth=2, label=f"Threshold ({min_evidence})")
+    ax.axvline(
+        x=min_evidence,
+        color=RESEARCH_COLORS["warning"],
+        linestyle="--",
+        linewidth=2,
+        label=f"Threshold ({min_evidence})",
+    )
 
     for bar, val in zip(bars, evidence_counts):
-        ax.text(bar.get_width() + max(evidence_counts) * 0.01,
-                bar.get_y() + bar.get_height() / 2,
-                str(int(val)), va="center", fontsize=10, fontweight="bold")
+        ax.text(
+            bar.get_width() + max(evidence_counts) * 0.01,
+            bar.get_y() + bar.get_height() / 2,
+            str(int(val)),
+            va="center",
+            fontsize=10,
+            fontweight="bold",
+        )
 
     ax.set_xlabel("Evidence Row Count")
     ax.set_ylabel("Case ID")
@@ -420,17 +538,18 @@ def plot_evidence_completeness(
     plt.close()
 
 
-def plot_fp_proxy_comparison(
-    benchmark_results: list[dict[str, Any]], output_path: Path
-) -> None:
+def plot_fp_proxy_comparison(benchmark_results: list[dict[str, Any]], output_path: Path) -> None:
     """Plot false positive proxy comparison across benchmark PCAPs."""
     if not benchmark_results:
         logger.warning("No benchmark results for FP proxy comparison plot")
         return
 
     # Filter out skipped/failed PCAPs
-    active = [r for r in benchmark_results if r.get("status", "success") == "success"
-              and r.get("total_events", 0) > 0]
+    active = [
+        r
+        for r in benchmark_results
+        if r.get("status", "success") == "success" and r.get("total_events", 0) > 0
+    ]
     if not active:
         logger.warning("No active benchmark results for FP proxy plot")
         return
@@ -446,11 +565,14 @@ def plot_fp_proxy_comparison(
             fp = 0.0
         names.append(result.get("name", "?"))
         values.append(fp)
-        colors.append(RESEARCH_COLORS["success"] if result.get("label") == "benign"
-                      else RESEARCH_COLORS["secondary"])
+        colors.append(
+            RESEARCH_COLORS["success"]
+            if result.get("label") == "benign"
+            else RESEARCH_COLORS["secondary"]
+        )
 
     fig, ax = plt.subplots(figsize=(12, 6))
-    bars = ax.bar(range(len(names)), values, color=colors, edgecolor="black", alpha=0.85)
+    ax.bar(range(len(names)), values, color=colors, edgecolor="black", alpha=0.85)
     ax.set_xticks(range(len(names)))
     ax.set_xticklabels(names, rotation=45, ha="right")
     ax.set_xlabel("PCAP")
@@ -493,7 +615,13 @@ def plot_detection_confusion_matrix(
         matrix_data = []
         for dt in types:
             m = per_type[dt]
-            matrix_data.append([m.get("true_positives", 0), m.get("false_positives", 0), m.get("false_negatives", 0)])
+            matrix_data.append(
+                [
+                    m.get("true_positives", 0),
+                    m.get("false_positives", 0),
+                    m.get("false_negatives", 0),
+                ]
+            )
         matrix = np.array(matrix_data)
         labels = types
         col_labels = ["TP", "FP", "FN"]
@@ -508,9 +636,16 @@ def plot_detection_confusion_matrix(
 
     for i in range(len(labels)):
         for j in range(len(col_labels)):
-            ax.text(j, i, str(int(matrix[i, j])),
-                    ha="center", va="center", fontsize=14, fontweight="bold",
-                    color="white" if matrix[i, j] > matrix.max() / 2 else "black")
+            ax.text(
+                j,
+                i,
+                str(int(matrix[i, j])),
+                ha="center",
+                va="center",
+                fontsize=14,
+                fontweight="bold",
+                color="white" if matrix[i, j] > matrix.max() / 2 else "black",
+            )
 
     ax.set_title("Detection Confusion Matrix", fontsize=14, fontweight="bold")
     fig.colorbar(im, ax=ax, label="Count")
@@ -540,29 +675,59 @@ def plot_confidence_distribution(cases: list[dict[str, Any]], output_path: Path)
     if len(confidences) <= 3:
         # Too few for histogram - show bar chart per case
         case_ids = [c.get("case_id", f"Case {i+1}") for i, c in enumerate(cases)]
-        colors = [RESEARCH_COLORS["success"] if c >= 0.6 else RESEARCH_COLORS["warning"]
-                  for c in confidences]
-        bars = ax.bar(range(len(case_ids)), confidences, color=colors,
-                      edgecolor="black", width=0.5, alpha=0.85)
+        colors = [
+            RESEARCH_COLORS["success"] if c >= 0.6 else RESEARCH_COLORS["warning"]
+            for c in confidences
+        ]
+        bars = ax.bar(
+            range(len(case_ids)),
+            confidences,
+            color=colors,
+            edgecolor="black",
+            width=0.5,
+            alpha=0.85,
+        )
         ax.set_xticks(range(len(case_ids)))
         ax.set_xticklabels(case_ids, rotation=45, ha="right")
         for bar, val in zip(bars, confidences):
-            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.01,
-                    f"{val:.2f}", ha="center", va="bottom", fontsize=11, fontweight="bold")
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.01,
+                f"{val:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=11,
+                fontweight="bold",
+            )
         ax.set_ylim(0, 1.1)
     else:
         ax.hist(
-            confidences, bins=20, range=(0, 1),
-            edgecolor="black", alpha=0.7, color=RESEARCH_COLORS["info"],
-            label="Cases", density=False
+            confidences,
+            bins=20,
+            range=(0, 1),
+            edgecolor="black",
+            alpha=0.7,
+            color=RESEARCH_COLORS["info"],
+            label="Cases",
+            density=False,
         )
 
-    ax.axvline(x=0.6, color=RESEARCH_COLORS["secondary"], linestyle="--",
-               linewidth=2, label="Confidence Threshold (0.6)")
+    ax.axvline(
+        x=0.6,
+        color=RESEARCH_COLORS["secondary"],
+        linestyle="--",
+        linewidth=2,
+        label="Confidence Threshold (0.6)",
+    )
 
     mean_conf = np.mean(confidences)
-    ax.axvline(x=mean_conf, color=RESEARCH_COLORS["success"], linestyle="-.",
-               linewidth=2, label=f"Mean ({mean_conf:.2f})")
+    ax.axvline(
+        x=mean_conf,
+        color=RESEARCH_COLORS["success"],
+        linestyle="-.",
+        linewidth=2,
+        label=f"Mean ({mean_conf:.2f})",
+    )
 
     ax.set_xlabel("Confidence Score", fontsize=12)
     ax.set_ylabel("Number of Cases", fontsize=12)
@@ -583,13 +748,30 @@ def plot_ablation_comparison(ablation_results: dict[str, Any], output_path: Path
 
     _set_research_style()
     config_names = list(configs.keys())
-    metrics_to_plot = ["detections", "cases", "compression_ratio", "evidence_completeness", "mean_confidence"]
-    metric_labels = ["Detections", "Cases", "Compression Ratio", "Evidence Completeness", "Mean Confidence"]
+    metrics_to_plot = [
+        "detections",
+        "cases",
+        "compression_ratio",
+        "evidence_completeness",
+        "mean_confidence",
+    ]
+    metric_labels = [
+        "Detections",
+        "Cases",
+        "Compression Ratio",
+        "Evidence Completeness",
+        "Mean Confidence",
+    ]
 
     x = np.arange(len(config_names))
     width = 0.15
-    colors = [RESEARCH_COLORS["primary"], RESEARCH_COLORS["secondary"],
-              RESEARCH_COLORS["info"], RESEARCH_COLORS["success"], RESEARCH_COLORS["warning"]]
+    colors = [
+        RESEARCH_COLORS["primary"],
+        RESEARCH_COLORS["secondary"],
+        RESEARCH_COLORS["info"],
+        RESEARCH_COLORS["success"],
+        RESEARCH_COLORS["warning"],
+    ]
 
     fig, ax = plt.subplots(figsize=(14, 7))
 
@@ -602,14 +784,27 @@ def plot_ablation_comparison(ablation_results: dict[str, Any], output_path: Path
                 val = 0
             values.append(float(val))
 
-        bars = ax.bar(x + i * width, values, width, label=label, color=colors[i],
-                      edgecolor="black", alpha=0.85)
+        bars = ax.bar(
+            x + i * width,
+            values,
+            width,
+            label=label,
+            color=colors[i],
+            edgecolor="black",
+            alpha=0.85,
+        )
 
         for bar, val in zip(bars, values):
             if val > 0:
                 text = f"{val:.2f}" if val != int(val) else str(int(val))
-                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height(),
-                       text, ha="center", va="bottom", fontsize=8)
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    bar.get_height(),
+                    text,
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                )
 
     ax.set_xlabel("Configuration", fontsize=12)
     ax.set_ylabel("Value", fontsize=12)
@@ -682,8 +877,12 @@ def plot_agent_pipeline_sankey(
     """Plot pipeline funnel chart showing data flow through stages."""
     stages = ["Events", "Detections", "Cases", "Validated\nCases"]
     values = [events_count, detections_count, cases_count, validated_count]
-    colors = [RESEARCH_COLORS["muted"], RESEARCH_COLORS["warning"],
-              RESEARCH_COLORS["info"], RESEARCH_COLORS["success"]]
+    colors = [
+        RESEARCH_COLORS["muted"],
+        RESEARCH_COLORS["warning"],
+        RESEARCH_COLORS["info"],
+        RESEARCH_COLORS["success"],
+    ]
 
     _set_research_style()
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -695,7 +894,10 @@ def plot_agent_pipeline_sankey(
             bar.get_x() + bar.get_width() / 2,
             bar.get_height() + max(values) * 0.02,
             str(val),
-            ha="center", va="bottom", fontsize=14, fontweight="bold"
+            ha="center",
+            va="bottom",
+            fontsize=14,
+            fontweight="bold",
         )
 
     for i in range(len(stages) - 1):
@@ -708,8 +910,10 @@ def plot_agent_pipeline_sankey(
             ax.annotate(
                 f"-{reduction:.1f}%",
                 xy=(i + 0.5, mid_y),
-                fontsize=11, ha="center", color=RESEARCH_COLORS["secondary"],
-                fontweight="bold"
+                fontsize=11,
+                ha="center",
+                color=RESEARCH_COLORS["secondary"],
+                fontweight="bold",
             )
 
     ax.set_xticks(range(len(stages)))
@@ -736,10 +940,20 @@ def plot_confidence_factor_breakdown(cases: list[dict[str, Any]], output_path: P
         logger.warning("No cases for confidence factor breakdown plot")
         return
 
-    factor_names = ["detection_strength", "evidence_volume", "sensor_diversity",
-                    "temporal_concentration", "cross_case_correlation"]
-    factor_labels = ["Detection\nStrength", "Evidence\nVolume", "Sensor\nDiversity",
-                     "Temporal\nConc.", "Cross-Case\nCorr."]
+    factor_names = [
+        "detection_strength",
+        "evidence_volume",
+        "sensor_diversity",
+        "temporal_concentration",
+        "cross_case_correlation",
+    ]
+    factor_labels = [
+        "Detection\nStrength",
+        "Evidence\nVolume",
+        "Sensor\nDiversity",
+        "Temporal\nConc.",
+        "Cross-Case\nCorr.",
+    ]
 
     case_ids = []
     factor_data = {f: [] for f in factor_names}
@@ -762,14 +976,25 @@ def plot_confidence_factor_breakdown(cases: list[dict[str, Any]], output_path: P
     fig, ax = plt.subplots(figsize=(12, 7))
     x = np.arange(len(case_ids))
     width = 0.15
-    colors = [RESEARCH_COLORS["primary"], RESEARCH_COLORS["info"],
-              RESEARCH_COLORS["success"], RESEARCH_COLORS["warning"],
-              RESEARCH_COLORS["secondary"]]
+    colors = [
+        RESEARCH_COLORS["primary"],
+        RESEARCH_COLORS["info"],
+        RESEARCH_COLORS["success"],
+        RESEARCH_COLORS["warning"],
+        RESEARCH_COLORS["secondary"],
+    ]
 
     for i, (factor, label) in enumerate(zip(factor_names, factor_labels)):
         values = factor_data[factor]
-        ax.bar(x + i * width, values, width, label=label, color=colors[i],
-               edgecolor="black", alpha=0.85)
+        ax.bar(
+            x + i * width,
+            values,
+            width,
+            label=label,
+            color=colors[i],
+            edgecolor="black",
+            alpha=0.85,
+        )
 
     ax.set_xlabel("Case ID", fontsize=12)
     ax.set_ylabel("Factor Score (0-1)", fontsize=12)
@@ -808,6 +1033,7 @@ def plot_detection_signal_heatmap(detections: list[dict[str, Any]], output_path:
         if isinstance(metadata, str):
             try:
                 import json
+
                 metadata = json.loads(metadata)
             except (ValueError, TypeError):
                 metadata = {}
@@ -845,8 +1071,16 @@ def plot_detection_signal_heatmap(detections: list[dict[str, Any]], output_path:
     for i in range(len(rows)):
         for j in range(len(all_signals)):
             val = matrix[i, j]
-            ax.text(j, i, f"{val:.2f}", ha="center", va="center", fontsize=11,
-                    fontweight="bold", color="white" if val > 0.5 else "black")
+            ax.text(
+                j,
+                i,
+                f"{val:.2f}",
+                ha="center",
+                va="center",
+                fontsize=11,
+                fontweight="bold",
+                color="white" if val > 0.5 else "black",
+            )
 
     ax.set_title("Detection Signal Strength Heatmap", fontsize=14, fontweight="bold")
     fig.colorbar(im, ax=ax, label="Signal Strength (0-1)", shrink=0.8)
@@ -856,9 +1090,12 @@ def plot_detection_signal_heatmap(detections: list[dict[str, Any]], output_path:
 
 
 def plot_threshold_sensitivity(
-    normalized_df: pd.DataFrame, output_path: Path,
-    current_fan_out: int = 15, current_burst: int = 20,
-    current_repeat: int = 5, current_nxdomain: float = 0.15,
+    normalized_df: pd.DataFrame,
+    output_path: Path,
+    current_fan_out: int = 15,
+    current_burst: int = 20,
+    current_repeat: int = 5,
+    current_nxdomain: float = 0.15,
 ) -> None:
     """Plot sensitivity analysis: detection count vs threshold parameters.
 
@@ -968,8 +1205,16 @@ def plot_threshold_sensitivity(
     # Mark current operating point
     if current_repeat in repeat_range:
         ri = repeat_range.index(current_repeat)
-        closest_nx = min(range(len(nxdomain_range)), key=lambda i: abs(nxdomain_range[i] - current_nxdomain))
-        ax2.plot(ri, closest_nx, "k*", markersize=15, label=f"Current ({current_repeat}, {current_nxdomain})")
+        closest_nx = min(
+            range(len(nxdomain_range)), key=lambda i: abs(nxdomain_range[i] - current_nxdomain)
+        )
+        ax2.plot(
+            ri,
+            closest_nx,
+            "k*",
+            markersize=15,
+            label=f"Current ({current_repeat}, {current_nxdomain})",
+        )
         ax2.legend(fontsize=9)
 
     plt.suptitle("Threshold Sensitivity Analysis", fontsize=14, fontweight="bold", y=1.02)
@@ -1013,8 +1258,9 @@ def plot_cross_pcap_confidence_comparison(
         if case_confidences:
             names.append(name)
             confidence_lists.append(case_confidences)
-            label_colors.append(RESEARCH_COLORS["secondary"] if label == "malicious"
-                               else RESEARCH_COLORS["success"])
+            label_colors.append(
+                RESEARCH_COLORS["secondary"] if label == "malicious" else RESEARCH_COLORS["success"]
+            )
 
     if not names:
         logger.warning("No confidence data for cross-PCAP comparison")
@@ -1022,14 +1268,23 @@ def plot_cross_pcap_confidence_comparison(
 
     fig, ax = plt.subplots(figsize=(12, 6))
 
-    bp = ax.boxplot(confidence_lists, patch_artist=True, widths=0.6,
-                    medianprops=dict(color="black", linewidth=2))
+    bp = ax.boxplot(
+        confidence_lists,
+        patch_artist=True,
+        widths=0.6,
+        medianprops=dict(color="black", linewidth=2),
+    )
     for patch, color in zip(bp["boxes"], label_colors):
         patch.set_facecolor(color)
         patch.set_alpha(0.7)
 
-    ax.axhline(y=0.6, color=RESEARCH_COLORS["muted"], linestyle="--",
-               linewidth=1.5, label="Decision Threshold (0.6)")
+    ax.axhline(
+        y=0.6,
+        color=RESEARCH_COLORS["muted"],
+        linestyle="--",
+        linewidth=1.5,
+        label="Decision Threshold (0.6)",
+    )
     ax.set_xticks(range(1, len(names) + 1))
     ax.set_xticklabels(names, rotation=45, ha="right")
     ax.set_xlabel("PCAP", fontsize=12)
@@ -1038,7 +1293,9 @@ def plot_cross_pcap_confidence_comparison(
     ax.set_ylim(0, 1.05)
 
     legend_elements = [
-        Patch(facecolor=RESEARCH_COLORS["secondary"], alpha=0.7, edgecolor="black", label="Malicious"),
+        Patch(
+            facecolor=RESEARCH_COLORS["secondary"], alpha=0.7, edgecolor="black", label="Malicious"
+        ),
         Patch(facecolor=RESEARCH_COLORS["success"], alpha=0.7, edgecolor="black", label="Benign"),
     ]
     ax.legend(handles=legend_elements, fontsize=10)

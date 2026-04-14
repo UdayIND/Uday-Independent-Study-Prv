@@ -374,8 +374,7 @@ def compute_soc_metrics(
             for c in cases
             if len(c.get("evidence", [])) > 0
             and any(
-                isinstance(e, dict) and e.get("src_ip") is not None
-                for e in c.get("evidence", [])
+                isinstance(e, dict) and e.get("src_ip") is not None for e in c.get("evidence", [])
             )
         )
         metrics["evidence_completeness"] = cases_with_evidence / len(cases)
@@ -561,7 +560,9 @@ def compute_ground_truth_metrics(
 
         if metrics["precision"] + metrics["recall"] > 0:
             metrics["f1_score"] = (
-                2 * metrics["precision"] * metrics["recall"]
+                2
+                * metrics["precision"]
+                * metrics["recall"]
                 / (metrics["precision"] + metrics["recall"])
             )
         else:
@@ -585,15 +586,16 @@ def compute_ground_truth_metrics(
 
         for dt in all_types:
             expected_for_type = {
-                es.get("src_ip") for es in expected_sources
-                if es.get("detection_type") == dt
+                es.get("src_ip") for es in expected_sources if es.get("detection_type") == dt
             }
             detected_for_type = {
-                d.get("src_ip") for d in detections
+                d.get("src_ip")
+                for d in detections
                 if d.get("detection_type") == dt and d.get("src_ip") in expected_for_type
             }
             fp_for_type = sum(
-                1 for d in detections
+                1
+                for d in detections
                 if d.get("detection_type") == dt and d.get("src_ip") not in expected_for_type
             )
 
@@ -605,7 +607,8 @@ def compute_ground_truth_metrics(
             type_recall = type_tp / (type_tp + type_fn) if (type_tp + type_fn) > 0 else 0.0
             type_f1 = (
                 2 * type_precision * type_recall / (type_precision + type_recall)
-                if (type_precision + type_recall) > 0 else 0.0
+                if (type_precision + type_recall) > 0
+                else 0.0
             )
 
             metrics["per_type_metrics"][dt] = {
@@ -686,9 +689,16 @@ def compute_statistical_metrics(
         """Compute bootstrap 95% confidence interval."""
         arr = np.array(values, dtype=float)
         if len(arr) < 2:
-            return {"mean": float(np.mean(arr)), "ci_lower": float(np.mean(arr)), "ci_upper": float(np.mean(arr)), "std": 0.0}
+            return {
+                "mean": float(np.mean(arr)),
+                "ci_lower": float(np.mean(arr)),
+                "ci_upper": float(np.mean(arr)),
+                "std": 0.0,
+            }
         rng = np.random.default_rng(42)
-        boot_means = [float(np.mean(rng.choice(arr, size=len(arr), replace=True))) for _ in range(n)]
+        boot_means = [
+            float(np.mean(rng.choice(arr, size=len(arr), replace=True))) for _ in range(n)
+        ]
         return {
             "mean": round(float(np.mean(arr)), 4),
             "std": round(float(np.std(arr, ddof=1)), 4),
@@ -710,9 +720,7 @@ def compute_statistical_metrics(
         s1 = np.std(malicious_detection_rates, ddof=1)
         s2 = np.std(benign_detection_rates, ddof=1)
         # Proper pooled standard deviation
-        pooled_std = np.sqrt(
-            ((n1 - 1) * s1**2 + (n2 - 1) * s2**2) / (n1 + n2 - 2)
-        )
+        pooled_std = np.sqrt(((n1 - 1) * s1**2 + (n2 - 1) * s2**2) / (n1 + n2 - 2))
         if pooled_std > 0:
             cohens_d = (m1 - m2) / pooled_std
             # Hedge's g correction for small samples
@@ -727,9 +735,7 @@ def compute_statistical_metrics(
             "n_malicious": n1,
             "n_benign": n2,
             "interpretation": (
-                "large" if abs(hedges_g) >= 0.8
-                else "medium" if abs(hedges_g) >= 0.5
-                else "small"
+                "large" if abs(hedges_g) >= 0.8 else "medium" if abs(hedges_g) >= 0.5 else "small"
             ),
         }
     elif n1 >= 1 and n2 >= 1:

@@ -130,26 +130,30 @@ def test_dns_multi_signal_metadata(detector_config):
 
     rows = []
     for i in range(15):
-        rows.append({
-            "event_type": "dns",
-            "src_ip": "10.50.1.10",
-            "dst_ip": "8.8.8.8",
-            "ts": 1705312200.0 + i * 30,
-            "proto": "UDP",
-            "sensor": "zeek",
-            "metadata": json.dumps({"query": "evil.example.com"}),
-        })
+        rows.append(
+            {
+                "event_type": "dns",
+                "src_ip": "10.50.1.10",
+                "dst_ip": "8.8.8.8",
+                "ts": 1705312200.0 + i * 30,
+                "proto": "UDP",
+                "sensor": "zeek",
+                "metadata": json.dumps({"query": "evil.example.com"}),
+            }
+        )
     # Add some normal queries for domain diversity
     for i, domain in enumerate(["google.com", "github.com", "example.org"]):
-        rows.append({
-            "event_type": "dns",
-            "src_ip": "10.50.1.10",
-            "dst_ip": "8.8.8.8",
-            "ts": 1705312200.0 + i * 100,
-            "proto": "UDP",
-            "sensor": "zeek",
-            "metadata": json.dumps({"query": domain}),
-        })
+        rows.append(
+            {
+                "event_type": "dns",
+                "src_ip": "10.50.1.10",
+                "dst_ip": "8.8.8.8",
+                "ts": 1705312200.0 + i * 100,
+                "proto": "UDP",
+                "sensor": "zeek",
+                "metadata": json.dumps({"query": domain}),
+            }
+        )
 
     df = pd.DataFrame(rows)
     detections = detector.detect(df)

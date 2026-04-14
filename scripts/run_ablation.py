@@ -20,7 +20,6 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.agents.critic_agent import CriticAgent  # noqa: E402
 from src.agents.evidence_agent import EvidenceAgent  # noqa: E402
 from src.agents.orchestrator import AgentOrchestrator  # noqa: E402
 from src.agents.report_agent import ReportAgent  # noqa: E402
@@ -71,8 +70,7 @@ def config_a_suricata_only(normalized_df: pd.DataFrame) -> dict:
 
     # Extract Suricata alert events as "detections"
     alert_df = normalized_df[
-        (normalized_df["sensor"] == "suricata")
-        & (normalized_df["event_type"] == "alert")
+        (normalized_df["sensor"] == "suricata") & (normalized_df["event_type"] == "alert")
     ]
 
     raw_alerts = len(alert_df)
@@ -88,15 +86,13 @@ def config_a_suricata_only(normalized_df: pd.DataFrame) -> dict:
     }
 
 
-def config_b_baseline_only(
-    normalized_df: pd.DataFrame, detector_config: dict
-) -> dict:
+def config_b_baseline_only(normalized_df: pd.DataFrame, detector_config: dict) -> dict:
     """Configuration B: Baseline detectors only (no agent orchestration)."""
     detector = BaselineDetector(detector_config)
     detections = detector.detect(normalized_df)
 
     num_detections = len(detections)
-    detections_list = detections.to_dict("records") if num_detections > 0 else []
+    detections.to_dict("records") if num_detections > 0 else []
 
     return {
         "name": "(B) Baseline Detectors Only",
@@ -389,9 +385,7 @@ def generate_ablation_report(results: list[dict], output_dir: Path) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Run ablation study")
     parser.add_argument("--pcap", required=True, help="PCAP file path")
-    parser.add_argument(
-        "--config", default="configs/detector.yaml", help="Detector config"
-    )
+    parser.add_argument("--config", default="configs/detector.yaml", help="Detector config")
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
@@ -417,8 +411,7 @@ def main():
 
     if normalized_df.empty:
         logger.error(
-            "No events loaded. Run the pipeline with Docker first: "
-            "make run PCAP=<path>"
+            "No events loaded. Run the pipeline with Docker first: " "make run PCAP=<path>"
         )
         sys.exit(1)
 
@@ -450,29 +443,22 @@ def main():
     print("")
 
     print("Running Configuration C: Full pipeline...")
-    result_c = config_c_full_pipeline(
-        normalized_df, detector_config, case_config, output_dir
-    )
+    result_c = config_c_full_pipeline(normalized_df, detector_config, case_config, output_dir)
     results.append(result_c)
     print(f"  Detections: {result_c['detections']}, Cases: {result_c['cases']}")
-    ev_c = result_c['evidence_completeness']
+    ev_c = result_c["evidence_completeness"]
     ev_c_str = f"{ev_c:.2%}" if ev_c is not None else "N/A"
-    print(f"  Compression: {result_c['compression_ratio']:.2f}, "
-          f"Evidence: {ev_c_str}")
+    print(f"  Compression: {result_c['compression_ratio']:.2f}, " f"Evidence: {ev_c_str}")
     print("")
 
     print("Running Configuration D: No critic agent...")
-    result_d = config_d_no_critic(
-        normalized_df, detector_config, case_config, output_dir
-    )
+    result_d = config_d_no_critic(normalized_df, detector_config, case_config, output_dir)
     results.append(result_d)
     print(f"  Detections: {result_d['detections']}, Cases: {result_d['cases']}")
     print("")
 
     print("Running Configuration E: Single sensor (Zeek only)...")
-    result_e = config_e_single_sensor(
-        normalized_df, detector_config, case_config, output_dir
-    )
+    result_e = config_e_single_sensor(normalized_df, detector_config, case_config, output_dir)
     results.append(result_e)
     print(f"  Detections: {result_e['detections']}, Cases: {result_e['cases']}")
     print("")
@@ -481,9 +467,7 @@ def main():
     generate_ablation_report(results, output_dir)
 
     # Generate ablation comparison chart
-    ablation_for_plot = {
-        "configs": {r["name"]: r for r in results}
-    }
+    ablation_for_plot = {"configs": {r["name"]: r for r in results}}
     figures_dir = output_dir / "figures"
     figures_dir.mkdir(exist_ok=True)
     plot_ablation_comparison(ablation_for_plot, figures_dir / "ablation_comparison.png")

@@ -7,7 +7,7 @@
 
 ## 1. Executive Summary
 
-This architecture audit evaluates the repository transition from its current state—a deterministic, rule-based offline Threat Detection Pipeline (SOC-Informed Discovery)—to the target **SENTINEL-RL / GG-NS-RL architecture**. 
+This architecture audit evaluates the repository transition from its current state—a deterministic, rule-based offline Threat Detection Pipeline (SOC-Informed Discovery)—to the target **SENTINEL-RL / GG-NS-RL architecture**.
 
 ### 🚨 Current System Maturity: Bare-Metal Prototyping
 The existing codebase provides a **solid heuristic baseline** but currently contains **0% Machine Learning, 0% Reinforcement Learning, 0% Graph Neural Networks, and 0% Large Language Models.** The system explicitly notes that "no machine learning or LLM inference is used," relying instead on mathematical heuristics (e.g., 5-factor confidence model) and string-template "Report Agents."
@@ -65,7 +65,7 @@ The system currently normalizes into tabular DataFrames. GNN encodings require N
 
 ### Gap 3: Defining the Reward Engineering System (Research Significance: PhD Level)
 Rule-based systems don't have rewards; RL systems live or die by them.
-- **Action**: Define sparse/delayed rewards. 
+- **Action**: Define sparse/delayed rewards.
   - *Positive*: +1.0 for identifying the true patient zero / attack path.
   - *Negative*: -0.01 penalty per investigation step (efficiency), -1.0 for false containment (CMDP boundary violation).
 

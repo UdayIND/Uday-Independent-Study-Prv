@@ -53,12 +53,27 @@ def test_validate_case_with_sufficient_evidence(case_config):
         "detection_type": "recon_scanning",
         "detection_count": 5,
         "evidence": [
-            {"src_ip": "192.168.1.1", "dst_ip": "10.0.0.1", "ts": 1705312200.0,
-             "event_type": "conn", "sensor": "zeek"},
-            {"src_ip": "192.168.1.1", "dst_ip": "10.0.0.2", "ts": 1705312201.0,
-             "event_type": "conn", "sensor": "zeek"},
-            {"src_ip": "192.168.1.1", "dst_ip": "10.0.0.3", "ts": 1705312202.0,
-             "event_type": "conn", "sensor": "zeek"},
+            {
+                "src_ip": "192.168.1.1",
+                "dst_ip": "10.0.0.1",
+                "ts": 1705312200.0,
+                "event_type": "conn",
+                "sensor": "zeek",
+            },
+            {
+                "src_ip": "192.168.1.1",
+                "dst_ip": "10.0.0.2",
+                "ts": 1705312201.0,
+                "event_type": "conn",
+                "sensor": "zeek",
+            },
+            {
+                "src_ip": "192.168.1.1",
+                "dst_ip": "10.0.0.3",
+                "ts": 1705312202.0,
+                "event_type": "conn",
+                "sensor": "zeek",
+            },
         ],
     }
     validation = critic.validate_case(case)
@@ -98,10 +113,20 @@ def test_five_factor_confidence_scores(case_config):
         "detection_confidence": 0.8,
         "ts_start": 1705312200.0,
         "evidence": [
-            {"src_ip": "192.168.1.1", "dst_ip": "10.0.0.1", "ts": 1705312200.0,
-             "event_type": "conn", "sensor": "zeek"},
-            {"src_ip": "192.168.1.1", "dst_ip": "10.0.0.2", "ts": 1705312201.0,
-             "event_type": "conn", "sensor": "suricata"},
+            {
+                "src_ip": "192.168.1.1",
+                "dst_ip": "10.0.0.1",
+                "ts": 1705312200.0,
+                "event_type": "conn",
+                "sensor": "zeek",
+            },
+            {
+                "src_ip": "192.168.1.1",
+                "dst_ip": "10.0.0.2",
+                "ts": 1705312201.0,
+                "event_type": "conn",
+                "sensor": "suricata",
+            },
         ],
     }
     validation = critic.validate_case(case)
@@ -145,7 +170,10 @@ def test_sensor_diversity_boosts_confidence(case_config):
     }
     val_multi = critic.validate_case(case_multi)
 
-    assert val_multi["factor_scores"]["sensor_diversity"] > val_single["factor_scores"]["sensor_diversity"]
+    assert (
+        val_multi["factor_scores"]["sensor_diversity"]
+        > val_single["factor_scores"]["sensor_diversity"]
+    )
 
 
 def test_cross_case_correlation(case_config):
