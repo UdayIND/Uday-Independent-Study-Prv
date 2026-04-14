@@ -106,6 +106,9 @@ else
     echo "⚠️  No Suricata eve.json found (may be empty or processing failed)"
 fi
 
+# Check cases.json
+check_file "$RUN_DIR/cases.json" "Cases output"
+
 # Check evaluation outputs
 echo ""
 echo "Checking evaluation outputs..."
@@ -113,6 +116,12 @@ echo "Checking evaluation outputs..."
 if [ -f "$RUN_DIR/evaluation_summary.json" ]; then
     if [ -s "$RUN_DIR/evaluation_summary.json" ]; then
         echo "✓ evaluation_summary.json exists and is not empty."
+        # Check for soc_metrics key
+        if grep -q '"soc_metrics"' "$RUN_DIR/evaluation_summary.json" 2>/dev/null; then
+            echo "✓ evaluation_summary.json contains soc_metrics."
+        else
+            echo "⚠️  evaluation_summary.json does not contain soc_metrics key."
+        fi
     else
         echo "✗ evaluation_summary.json exists but is empty."
         EXIT_CODE=1
@@ -150,6 +159,14 @@ if [ -d "$FIGURES_DIR" ]; then
     else
         echo "⚠️  figures/ directory exists but has fewer than 3 PNG files ($PNG_COUNT found)."
     fi
+    # Check for SOC-specific plots
+    for SOC_FIG in compression_ratio.png evidence_completeness.png; do
+        if [ -f "$FIGURES_DIR/$SOC_FIG" ]; then
+            echo "✓ Found SOC figure: $SOC_FIG"
+        else
+            echo "⚠️  Missing SOC figure: $SOC_FIG"
+        fi
+    done
 else
     echo "✗ figures/ directory does not exist."
     EXIT_CODE=1
@@ -162,6 +179,7 @@ if [ $ERRORS -eq 0 ]; then
     echo "Run summary:"
     echo "  - Manifest: $RUN_DIR/run_manifest.json"
     echo "  - Case Report: $RUN_DIR/case_report.md"
+    echo "  - Cases: $RUN_DIR/cases.json"
     echo "  - Detections: $RUN_DIR/detections.jsonl"
     echo "  - Agent Trace: $RUN_DIR/agent_trace.jsonl"
     echo "  - Events: $RUN_DIR/events.parquet"

@@ -1,4 +1,4 @@
-.PHONY: setup run test clean verify preflight eval tune docker-rebuild
+.PHONY: setup run test clean verify preflight eval tune docker-rebuild benchmark ablation verify-all synthetic-pcaps
 
 PYTHON := python3
 PIP := pip3
@@ -57,9 +57,9 @@ eval:
 	fi; \
 	echo "Evaluating run: $$LATEST_RUN"; \
 	if [ -d "venv" ]; then \
-		. venv/bin/activate && python3 -c "from src.eval.evaluator import Evaluator; import pandas as pd; import json; from pathlib import Path; run_dir = Path('reports/runs/$$LATEST_RUN'); events_df = pd.read_parquet(run_dir / 'events.parquet'); detections = [json.loads(line) for line in open(run_dir / 'detections.jsonl') if line.strip()]; cases = []; eval = Evaluator(run_dir); eval.evaluate(events_df, detections, cases)"; \
+		. venv/bin/activate && python3 scripts/run_eval.py --run-dir "reports/runs/$$LATEST_RUN" --config configs/detector.yaml; \
 	else \
-		python3 -c "from src.eval.evaluator import Evaluator; import pandas as pd; import json; from pathlib import Path; run_dir = Path('reports/runs/$$LATEST_RUN'); events_df = pd.read_parquet(run_dir / 'events.parquet'); detections = [json.loads(line) for line in open(run_dir / 'detections.jsonl') if line.strip()]; cases = []; eval = Evaluator(run_dir); eval.evaluate(events_df, detections, cases)"; \
+		python3 scripts/run_eval.py --run-dir "reports/runs/$$LATEST_RUN" --config configs/detector.yaml; \
 	fi
 
 tune:
@@ -81,4 +81,64 @@ docker-rebuild:
 	@echo "Rebuilding Docker images..."
 	@mkdir -p data/derived/zeek data/derived/suricata data/normalized reports/runs
 	@docker compose build --no-cache
-	@echo "✓ Docker images rebuilt"
+	@echo "Docker images rebuilt"
+
+synthetic-pcaps:
+	@echo "Generating synthetic PCAPs..."
+	@if [ -d "venv" ]; then \
+		. venv/bin/activate && python3 scripts/generate_synthetic_pcaps.py; \
+	else \
+		python3 scripts/generate_synthetic_pcaps.py; \
+	fi
+
+benchmark:
+	@echo "Running benchmark suite..."
+	@if [ -d "venv" ]; then \
+		. venv/bin/activate && python3 scripts/run_benchmark.py; \
+	else \
+		python3 scripts/run_benchmark.py; \
+	fi
+
+ablation:
+ifndef PCAP
+	@echo "Error: PCAP variable must be set. Usage: make ablation PCAP=data/raw/example.pcap"
+	@exit 1
+endif
+	@if [ ! -f "$(PCAP)" ]; then \
+		echo "Error: PCAP file $(PCAP) not found"; \
+		exit 1; \
+	fi
+	@if [ -d "venv" ]; then \
+		. venv/bin/activate && python3 scripts/run_ablation.py --pcap "$(PCAP)"; \
+	else \
+		python3 scripts/run_ablation.py --pcap "$(PCAP)"; \
+	fi
+
+verify-all: verify
+	@echo ""
+	@echo "Checking additional outputs..."
+	@if [ -d "reports/benchmark" ]; then \
+		LATEST_BM=$$(ls -t reports/benchmark/ 2>/dev/null | head -1); \
+		if [ -n "$$LATEST_BM" ] && [ -f "reports/benchmark/$$LATEST_BM/benchmark_report.md" ]; then \
+			echo "Found: Benchmark report (reports/benchmark/$$LATEST_BM)"; \
+		else \
+			echo "Warning: No benchmark report found"; \
+		fi; \
+	else \
+		echo "Warning: No benchmark directory found (run 'make benchmark')"; \
+	fi
+	@if [ -d "reports/ablation" ]; then \
+		LATEST_AB=$$(ls -t reports/ablation/ 2>/dev/null | head -1); \
+		if [ -n "$$LATEST_AB" ] && [ -f "reports/ablation/$$LATEST_AB/ablation_report.md" ]; then \
+			echo "Found: Ablation report (reports/ablation/$$LATEST_AB)"; \
+		else \
+			echo "Warning: No ablation report found"; \
+		fi; \
+	else \
+		echo "Warning: No ablation directory found (run 'make ablation PCAP=...')"; \
+	fi
+	@if [ -f "soc_pilot_proposal.md" ]; then \
+		echo "Found: SOC pilot proposal"; \
+	else \
+		echo "Warning: SOC pilot proposal not found"; \
+	fi

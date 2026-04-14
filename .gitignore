@@ -1,9 +1,13 @@
 # Data directories (raw PCAPs should not be committed)
 data/raw/*.pcap
 data/raw/*.pcapng
+data/raw/benchmark/
+data/raw/synthetic/
 data/derived/
 data/normalized/
 reports/runs/
+reports/benchmark/
+reports/ablation/
 
 # Python
 __pycache__/

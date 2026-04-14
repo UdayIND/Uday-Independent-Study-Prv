@@ -48,7 +48,9 @@ class TriageAgent:
             return []
 
         # Group by detection type, source IP, and time window
-        detections["time_bucket"] = (detections["ts_dt"] // self.time_window).astype(int)
+        window_seconds = int(self.time_window.total_seconds())
+        epoch_seconds = detections["ts_dt"].astype("int64") // 10**9
+        detections["time_bucket"] = epoch_seconds // window_seconds
 
         grouped = detections.groupby(["detection_type", "src_ip", "time_bucket"])
 
@@ -77,6 +79,14 @@ class TriageAgent:
                         if domain:
                             domains.append(domain)
                 case["domain"] = list(set(domains)) if domains else None
+
+            # Propagate detection metadata and confidence to case level
+            if "metadata" in group.columns:
+                first_meta = group.iloc[0].get("metadata")
+                if isinstance(first_meta, dict):
+                    case["metadata"] = first_meta
+            if "confidence" in group.columns:
+                case["detection_confidence"] = float(group["confidence"].max())
 
             cases.append(case)
             case_id += 1

@@ -39,6 +39,10 @@ class SuricataParser:
                         continue
                     try:
                         event = json.loads(line)
+                        # Skip Suricata stats events - they use current system
+                        # time instead of PCAP time and contaminate timestamp metrics
+                        if event.get("event_type") == "stats":
+                            continue
                         event["sensor"] = "suricata"
                         # Preserve event_type from Suricata (alert, flow, dns, http, etc.)
                         if "event_type" not in event:

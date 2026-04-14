@@ -8,12 +8,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 if [ $# -lt 1 ]; then
-    echo "Usage: $0 <pcap_file>"
-    echo "Example: $0 data/raw/capture.pcap"
+    echo "Usage: $0 <pcap_file> [--pcap-label malicious|benign|unknown]"
+    echo "Example: $0 data/raw/capture.pcap --pcap-label malicious"
     exit 1
 fi
 
 PCAP_FILE="$1"
+shift
+EXTRA_ARGS="$*"
 PCAP_BASENAME=$(basename "$PCAP_FILE")
 
 # Convert to absolute path if relative
@@ -21,6 +23,17 @@ if [[ "$PCAP_FILE" != /* ]]; then
     PCAP_ABS_PATH="$REPO_ROOT/$PCAP_FILE"
 else
     PCAP_ABS_PATH="$PCAP_FILE"
+fi
+
+# Compute relative path within data/raw/ for Docker volume mount
+# Docker mounts data/raw -> /pcap, so we need the path relative to data/raw/
+RAW_DIR="$REPO_ROOT/data/raw"
+if [[ "$PCAP_ABS_PATH" == "$RAW_DIR"/* ]]; then
+    PCAP_DOCKER_PATH="${PCAP_ABS_PATH#$RAW_DIR/}"
+else
+    # PCAP is outside data/raw/, copy it there for Docker access
+    cp "$PCAP_ABS_PATH" "$RAW_DIR/$PCAP_BASENAME"
+    PCAP_DOCKER_PATH="$PCAP_BASENAME"
 fi
 
 if [ ! -f "$PCAP_ABS_PATH" ]; then
@@ -53,7 +66,7 @@ mkdir -p "$REPO_ROOT/data/derived/zeek" "$REPO_ROOT/data/derived/suricata" "$REP
 # Step 1: Run Zeek
 if [ "$SKIP_DOCKER" = "false" ]; then
     echo "Step 1/3: Running Zeek..."
-    export PCAP_FILE="$PCAP_BASENAME"
+    export PCAP_FILE="$PCAP_DOCKER_PATH"
     if docker compose run --rm zeek; then
         echo "✓ Zeek completed successfully"
     else
@@ -94,9 +107,9 @@ fi
 echo ""
 echo "Step 3/3: Running Python pipeline..."
 if [ -d "$REPO_ROOT/venv" ]; then
-    . "$REPO_ROOT/venv/bin/activate" && python3 -m src.main --pcap "$PCAP_ABS_PATH"
+    . "$REPO_ROOT/venv/bin/activate" && python3 -m src.main --pcap "$PCAP_ABS_PATH" $EXTRA_ARGS
 else
-    python3 -m src.main --pcap "$PCAP_ABS_PATH"
+    python3 -m src.main --pcap "$PCAP_ABS_PATH" $EXTRA_ARGS
 fi
 
 echo ""

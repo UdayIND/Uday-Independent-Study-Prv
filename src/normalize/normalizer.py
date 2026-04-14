@@ -63,6 +63,11 @@ class EventNormalizer:
             if field not in df.columns:
                 df[field] = None
 
+        # Cast port columns to nullable int to avoid float formatting
+        for port_col in ["src_port", "dst_port"]:
+            if port_col in df.columns:
+                df[port_col] = df[port_col].astype(pd.Int64Dtype())
+
         # Sort by timestamp
         if "ts" in df.columns and len(df) > 0:
             df = df.sort_values("ts")

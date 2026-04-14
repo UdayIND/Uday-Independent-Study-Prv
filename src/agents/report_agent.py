@@ -172,6 +172,17 @@ class ReportAgent:
                 dst_ip = ev.get("dst_ip", "N/A")
                 src_port = ev.get("src_port", "")
                 dst_port = ev.get("dst_port", "")
+                # Format ports as integers (avoid float display like 59136.0)
+                if src_port and str(src_port) not in ("", "None", "nan", "<NA>"):
+                    try:
+                        src_port = int(float(str(src_port)))
+                    except (ValueError, TypeError):
+                        pass
+                if dst_port and str(dst_port) not in ("", "None", "nan", "<NA>"):
+                    try:
+                        dst_port = int(float(str(dst_port)))
+                    except (ValueError, TypeError):
+                        pass
                 ports = (
                     f"{src_port}:{dst_port}"
                     if src_port and dst_port

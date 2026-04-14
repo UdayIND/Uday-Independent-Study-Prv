@@ -6,35 +6,31 @@ services:
     volumes:
       - ./data/raw:/pcap:ro
       - ./data/derived/zeek:/logs:rw
-      - ./configs/zeek:/usr/local/zeek/share/zeek/site:ro
     environment:
       - PCAP_FILE=${PCAP_FILE:-}
-      - ZEEK_LOG_PATH=/logs
-    command: >
-      sh -c "
-        if [ -z \"$$PCAP_FILE\" ]; then
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        if [ -z "$PCAP_FILE" ]; then
           echo 'Error: PCAP_FILE environment variable not set';
           exit 1;
-        fi;
-        if [ ! -f \"/pcap/$$PCAP_FILE\" ]; then
-          echo \"Error: PCAP file /pcap/$$PCAP_FILE not found\";
+        fi
+        if [ ! -f "/pcap/$PCAP_FILE" ]; then
+          echo "Error: PCAP file /pcap/$PCAP_FILE not found";
           exit 1;
-        fi;
-        echo \"Processing PCAP: /pcap/$$PCAP_FILE\";
-        cd /logs;
-        zeek -r \"/pcap/$$PCAP_FILE\" -C local 2>&1;
-        if [ -f \"/logs/conn.log\" ]; then
-          LINE_COUNT=$$(wc -l < /logs/conn.log 2>/dev/null | grep -v '^0' || echo 0);
-          echo \"✓ Generated conn.log ($$LINE_COUNT lines)\";
+        fi
+        echo "Processing PCAP: /pcap/$PCAP_FILE"
+        cd /logs
+        zeek -r "/pcap/$PCAP_FILE" -C LogAscii::use_json=T 2>&1 || true
+        if [ -f /logs/conn.log ]; then
+          echo "Generated conn.log"
         else
-          echo \"⚠️  conn.log not generated\";
-        fi;
-        if [ -f \"/logs/dns.log\" ]; then
-          LINE_COUNT=$$(wc -l < /logs/dns.log 2>/dev/null | grep -v '^0' || echo 0);
-          echo \"✓ Generated dns.log ($$LINE_COUNT lines)\";
-        fi;
-        echo 'Zeek processing completed';
-      "
+          echo "conn.log not generated"
+        fi
+        if [ -f /logs/dns.log ]; then
+          echo "Generated dns.log"
+        fi
+        echo "Zeek processing completed"
     networks:
       - soc-network
     restart: "no"
@@ -46,29 +42,27 @@ services:
     volumes:
       - ./data/raw:/pcap:ro
       - ./data/derived/suricata:/var/log/suricata:rw
-      - ./configs/suricata:/etc/suricata:ro
     environment:
       - PCAP_FILE=${PCAP_FILE:-}
-    command: >
-      sh -c "
-        if [ -z \"$$PCAP_FILE\" ]; then
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        if [ -z "$PCAP_FILE" ]; then
           echo 'Error: PCAP_FILE environment variable not set';
           exit 1;
-        fi;
-        if [ ! -f \"/pcap/$$PCAP_FILE\" ]; then
-          echo \"Error: PCAP file /pcap/$$PCAP_FILE not found\";
+        fi
+        if [ ! -f "/pcap/$PCAP_FILE" ]; then
+          echo "Error: PCAP file /pcap/$PCAP_FILE not found";
           exit 1;
-        fi;
-        echo \"Processing PCAP: /pcap/$$PCAP_FILE\";
-        suricata -r \"/pcap/$$PCAP_FILE\" -l /var/log/suricata -c /etc/suricata/suricata.yaml 2>&1;
-        if [ -f \"/var/log/suricata/eve.json\" ]; then
-          LINE_COUNT=$$(wc -l < /var/log/suricata/eve.json 2>/dev/null || echo 0);
-          echo \"✓ Generated eve.json ($$LINE_COUNT lines)\";
+        fi
+        echo "Processing PCAP: /pcap/$PCAP_FILE"
+        suricata -r "/pcap/$PCAP_FILE" -l /var/log/suricata 2>&1 || true
+        if [ -f /var/log/suricata/eve.json ]; then
+          echo "Generated eve.json"
         else
-          echo \"⚠️  eve.json not generated\";
-        fi;
-        echo 'Suricata processing completed';
-      "
+          echo "eve.json not generated"
+        fi
+        echo "Suricata processing completed"
     networks:
       - soc-network
     restart: "no"

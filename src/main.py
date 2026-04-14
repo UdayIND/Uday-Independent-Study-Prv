@@ -54,9 +54,9 @@ def load_config(config_path: Path) -> dict:
         return yaml.safe_load(f)
 
 
-def run_pipeline(pcap_path: Path, config_path: Path, output_dir: Path) -> None:
+def run_pipeline(pcap_path: Path, config_path: Path, output_dir: Path, pcap_label: str = "unknown", expected_sources: list | None = None) -> None:
     """Execute the complete pipeline."""
-    logger.info(f"Starting pipeline for PCAP: {pcap_path}")
+    logger.info(f"Starting pipeline for PCAP: {pcap_path} (label: {pcap_label})")
 
     # Create output directory with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -114,7 +114,7 @@ def run_pipeline(pcap_path: Path, config_path: Path, output_dir: Path) -> None:
     if len(detections_list) > 0:
         with open(detections_path, "w") as f:
             for det in detections_list:
-                f.write(json.dumps(det) + "\n")
+                f.write(json.dumps(det, default=str) + "\n")
         logger.info(f"Saved {len(detections_list)} detections to {detections_path}")
     else:
         # Create empty file
@@ -136,8 +136,37 @@ def run_pipeline(pcap_path: Path, config_path: Path, output_dir: Path) -> None:
     cases = orchestrator.run()
     logger.info(f"Generated {len(cases)} cases")
 
+    # Serialize cases for later re-evaluation
+    cases_path = run_dir / "cases.json"
+
+    def _serialize_case(case):
+        """Serialize a case dict, converting non-JSON-serializable values."""
+        serializable = {}
+        skip_keys = {"evidence", "detections", "report_content"}
+        for k, v in case.items():
+            if k in skip_keys:
+                if k == "evidence":
+                    serializable["evidence_count"] = len(v) if v else 0
+                continue
+            try:
+                json.dumps(v)
+                serializable[k] = v
+            except (TypeError, ValueError):
+                serializable[k] = str(v)
+        # Keep validation results
+        if "validation" in case:
+            serializable["validation"] = case["validation"]
+        return serializable
+
+    serialized_cases = [_serialize_case(c) for c in cases]
+    with open(cases_path, "w") as f:
+        json.dump(serialized_cases, f, indent=2, default=str)
+    logger.info(f"Saved {len(serialized_cases)} cases to {cases_path}")
+
     # Step 5.5: Evaluation
     logger.info("Running evaluation...")
+    config["pcap_label"] = pcap_label
+    config["expected_sources"] = expected_sources
     evaluator = Evaluator(run_dir, config)
     evaluator.evaluate(normalized_df, detections_list, cases)
     logger.info("Evaluation completed")
@@ -184,6 +213,19 @@ def main():
         default="reports/runs",
         help="Output directory for reports",
     )
+    parser.add_argument(
+        "--pcap-label",
+        type=str,
+        choices=["malicious", "benign", "unknown"],
+        default="unknown",
+        help="Ground truth label for the PCAP (malicious, benign, or unknown)",
+    )
+    parser.add_argument(
+        "--expected-sources-json",
+        type=str,
+        default=None,
+        help="JSON string of expected malicious sources for ground truth evaluation",
+    )
 
     args = parser.parse_args()
 
@@ -200,8 +242,17 @@ def main():
     output_dir = Path(args.output)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Parse expected sources JSON if provided
+    expected_sources = None
+    if args.expected_sources_json:
+        try:
+            expected_sources = json.loads(args.expected_sources_json)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse --expected-sources-json: {e}")
+            sys.exit(1)
+
     try:
-        run_pipeline(pcap_path, config_path, output_dir)
+        run_pipeline(pcap_path, config_path, output_dir, pcap_label=args.pcap_label, expected_sources=expected_sources)
     except Exception as e:
         logger.error(f"Pipeline failed: {e}", exc_info=True)
         sys.exit(1)

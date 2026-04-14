@@ -38,6 +38,7 @@ class AgentOrchestrator:
         self.case_config = case_config
         self.output_dir = Path(output_dir)
         self.trace_file = self.output_dir / "agent_trace.jsonl"
+        self.max_retries = case_config.get("max_retries", 3)
 
         # Initialize agents
         self.triage_agent = TriageAgent(case_config)
@@ -67,22 +68,36 @@ class AgentOrchestrator:
             cases_with_evidence.append(case)
         self._log_trace("evidence_agent", "complete", {"cases_processed": len(cases_with_evidence)})
 
-        # Step 3: Critic - validate evidence completeness
-        self._log_trace("critic_agent", "start", {})
+        # Step 3: Critic - validate evidence completeness with multi-round refinement
+        self._log_trace("critic_agent", "start", {"max_retries": self.max_retries})
         validated_cases = []
         for case in cases_with_evidence:
-            validation = self.critic_agent.validate_case(case)
-            if not validation["is_valid"]:
-                # Request additional evidence retrieval
+            validation = self.critic_agent.validate_case(case, all_cases=cases_with_evidence)
+            rounds = 1
+
+            # Multi-round evidence refinement loop
+            while not validation["is_valid"] and rounds < self.max_retries:
                 self._log_trace(
-                    "critic_agent", "request_evidence", {"case_id": case.get("case_id")}
+                    "critic_agent", "request_evidence",
+                    {"case_id": case.get("case_id"), "round": rounds, "issues": validation.get("issues", [])}
                 )
                 additional_evidence = self.evidence_agent.retrieve_evidence(case, expand=True)
-                case["evidence"].extend(additional_evidence)
-                # Re-validate
-                validation = self.critic_agent.validate_case(case)
+                # Deduplicate evidence by timestamp + src_ip
+                existing_keys = {
+                    (str(e.get("ts")), str(e.get("src_ip")))
+                    for e in case["evidence"]
+                }
+                for ev in additional_evidence:
+                    key = (str(ev.get("ts")), str(ev.get("src_ip")))
+                    if key not in existing_keys:
+                        case["evidence"].append(ev)
+                        existing_keys.add(key)
+
+                validation = self.critic_agent.validate_case(case, all_cases=cases_with_evidence)
+                rounds += 1
 
             case["validation"] = validation
+            case["rounds_to_converge"] = rounds
             validated_cases.append(case)
         self._log_trace("critic_agent", "complete", {"cases_validated": len(validated_cases)})
 
