@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software in your research, please cite it as below."
+authors:
+  - family-names: "Student"
+    given-names: "Uday"
+    affiliation: "Indiana University"
+title: "SOC-Informed Discovery: Agent-Assisted Threat Detection"
+version: 0.1.0
+date-released: 2026-04-28
+url: "https://github.com/UdayIND/Uday-Independent-Study-Prv"
+repository-code: "https://github.com/UdayIND/Uday-Independent-Study-Prv"
+abstract: >-
+  An end-to-end cybersecurity threat detection pipeline leveraging heuristic baselines and unsupervised Machine Learning (Isolation Forest) to analyze network telemetry (Zeek/Suricata), identify anomalies, and assemble security cases for Agentic SOC triage. Includes a real-time FastAPI backend, live Kafka ingestion streaming, and a Streamlit Analyst Workbench.
+keywords:
+  - cybersecurity
+  - threat-detection
+  - machine-learning
+  - agentic-ai
+  - soc
+  - telemetry
+license: MIT

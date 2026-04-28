@@ -1,130 +1,180 @@
-# SOC-Informed Discovery: Agent-Assisted Threat Detection Pipeline
+# SENTINEL-RL: SOC-Informed Discovery
 
-A reproducible offline pipeline that processes PCAP files through Zeek/Suricata analysis, normalizes events, applies baseline detections, and generates analyst-ready case reports using multi-agent orchestration.
+## 1. Project Title & Overview
+**SOC-Informed Discovery** is an end-to-end cybersecurity threat detection pipeline and backend. It leverages heuristic baselines and unsupervised Machine Learning (Isolation Forest) to analyze network telemetry (Zeek/Suricata), identify anomalies, and assemble security cases for Agentic SOC triage.
 
-## What It Does
+### Key Features
+- **Data Ingestion:** Parses and normalizes raw Zeek and Suricata logs into unified structures.
+- **Machine Learning Pipeline:** Extracts behavioral features (e.g., unique ports/hosts scanned per IP) and trains an anomaly detection model.
+- **Real-Time API Backend:** Provides a FastAPI service for live threat prediction and background retraining.
+- **Analyst Workbench UI:** Optional Streamlit frontend to interact with the graph database and RL policy agent.
 
-1. **Ingest**: Parses Zeek (`conn.log`, `dns.log`) and Suricata (`eve.json`) logs from PCAP files
-2. **Normalize**: Converts heterogeneous logs into unified event schema (Parquet)
-3. **Detect**: Applies baseline detectors for recon/scanning and DNS beaconing
-4. **Orchestrate**: Multi-agent system (Triage → Evidence → Critic → Report) assembles cases
-5. **Report**: Generates markdown case reports with evidence tables and defensive recommendations
+### High-Level Architecture
+1. **Telemetry Parsers**: `src/ingest/` reads raw logs.
+2. **Normalizer**: `src/normalize/` outputs clean Parquet files.
+3. **ML Model**: `src/model/` trains an Isolation Forest on aggregated telemetry features to detect anomalies.
+4. **FastAPI Backend**: `src/api.py` exposes REST endpoints for live prediction.
 
-## Prerequisites
+---
 
+## 2. Setup Instructions
+
+### Prerequisites
 - Python 3.9+
-- Docker & Docker Compose (v2.x) for Zeek/Suricata
-- Make
+- Pip and virtual environment support (`venv` or `conda`)
 
-## Quick Start
+### Installation Steps
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/UdayIND/Uday-Independent-Study-Prv.git
+   cd Uday-Independent-Study-Prv
+   ```
 
+2. **Create and activate a virtual environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -e .
+   ```
+
+### Environment Setup
+Copy the configuration template and edit if necessary:
 ```bash
-# 1. Clone and setup
-git clone https://github.com/UdayIND/Uday-Independent-Study-Prv.git
-cd Uday-Independent-Study-Prv
-make setup
-
-# 2. Download sample PCAP
-bash scripts/download_sample_pcap.sh
-
-# 3. Run pipeline
-make run PCAP=data/raw/sample.pcap
-
-# 4. Verify outputs
-make verify
+cp .env.example .env
 ```
+The application uses these values via `src/config.py` to connect to Kafka, Neo4j, and the FastAPI host.
 
-## Outputs
+---
 
-Results are written to `reports/runs/<timestamp>/`:
+## 3. How to Run
 
-- `events.parquet` - Normalized events DataFrame
-- `case_report.md` - Analyst-ready case report (links to evaluation report)
-- `run_manifest.json` - Run metadata, PCAP hash, git commit, tool versions
-- `agent_trace.jsonl` - Agent orchestration steps (JSONL)
-- `detections.jsonl` - Baseline detections
-- `evaluation_summary.json` - Evaluation metrics (data health, detection quality, agentic metrics)
-- `evaluation_report.md` - Evaluation report with embedded visualizations
-- `figures/*.png` - 9 evaluation plots (events per minute, top IPs, protocols, DNS, detections, etc.)
-
-Also generates:
-- `data/derived/zeek/conn.log`, `dns.log` (if Docker works)
-- `data/derived/suricata/eve.json` (if Docker works)
-- `data/normalized/events_<timestamp>.parquet`
-
-### Viewing Evaluation Results
-
-Open `reports/runs/<timestamp>/evaluation_report.md` in a markdown viewer to see:
-- Data health metrics (event counts, missing values, top talkers)
-- Detection quality metrics (explainability scores, confidence distributions)
-- Agentic verification metrics (critic checks, evidence retrieval passes)
-- 9 visualizations embedded in the report
-
-## Configuration
-
-Detector thresholds in `configs/detector.yaml`:
-
-```yaml
-detectors:
-  recon_scanning:
-    fan_out_threshold: 50
-    burst_threshold: 100
-  dns_beaconing:
-    repeated_query_threshold: 10
-    nxdomain_ratio_threshold: 0.3
-```
-
-## Testing
-
+### Training the Model
+To train the Anomaly Detection model on existing normalized data in `data/normalized`:
 ```bash
-make test
+python -m src.model.train
 ```
+*Outputs: Artifacts will be saved to `data/models/isolation_forest_v_latest.joblib`.*
 
-## Evaluation
-
-After running the pipeline, evaluate the most recent run:
-
+### Running the Backend/API
+Start the FastAPI server:
 ```bash
-make eval
+uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-This regenerates evaluation metrics and plots for the latest run directory.
+### Running Inference (Batch Pipeline)
+You can run the full end-to-end heuristic + ML pipeline on a PCAP file:
+```bash
+python -m src.main --pcap data/sample.pcap --config configs/detector.yaml
+```
 
-## Troubleshooting
+---
 
-**Zeek/Suricata logs not found**:
-- Ensure Docker is running: `docker info`
-- Rebuild Docker images: `make docker-rebuild`
-- Check telemetry validation: `bash scripts/validate_telemetry.sh`
-- View Docker logs: `docker compose logs zeek` and `docker compose logs suricata`
-- Ensure directories exist: `mkdir -p data/derived/zeek data/derived/suricata`
+## 4. Example Usage
 
-**No detections**:
-- Lower thresholds in `configs/detector.yaml` for testing
-- Use tuning mode: `make tune PCAP=data/raw/sample.pcap`
-- Check `no_detections_diagnosis.md` for analysis
+**1. Predict Anomalies from Python:**
+```python
+from src.model.inference import ThreatPredictor
 
-**PCAP not found**: Place PCAP files in `data/raw/` (gitignored, never committed).
+predictor = ThreatPredictor()
+events = [{"src_ip": "10.0.0.1", "event_type": "CONNECT", "dst_port": 22, "dst_ip": "192.168.1.5"}]
+results = predictor.predict(events)
+print(results)
+```
 
-**Docker issues on Mac**:
-- Ensure Docker Desktop is running
-- Check file permissions: containers run as root for write access
-- Verify mounts: `docker compose config` shows volume mappings
-- Clean rebuild: `make docker-rebuild`
+**2. Example Output:**
+```json
+[
+  {
+    "src_ip": "10.0.0.1",
+    "is_threat": true,
+    "risk_score": 0.0543,
+    "metrics": {
+      "total_events": 1.0,
+      "unique_dst_ports": 1.0,
+      "unique_dst_ips": 1.0
+    }
+  }
+]
+```
 
-## Multi-Agent Architecture
+---
 
-- **TriageAgent**: Groups detections into cases (IP, time window, detection type)
-- **EvidenceAgent**: Retrieves supporting event rows from normalized data
-- **CriticAgent**: Validates case completeness and evidence references
-- **ReportAgent**: Generates markdown reports with defensive recommendations only
+## 5. API Usage
 
-All steps logged to `agent_trace.jsonl` for traceability.
+When the server is running at `http://127.0.0.1:8000`, the following endpoints are available. Interactive Swagger docs can be accessed at `http://127.0.0.1:8000/docs`.
 
-## Security
+### GET `/health`
+Check API status and model readiness.
+- **Response:** `{"status": "ok", "model_loaded": true}`
 
-See [SECURITY.md](SECURITY.md) for defensive-only policy and data handling guidelines.
+### POST `/predict`
+Run anomaly detection on a batch of telemetry events.
+- **Payload:**
+  ```json
+  {
+    "events": [
+      {
+        "src_ip": "192.168.1.100",
+        "event_type": "CONNECT",
+        "dst_port": 80,
+        "dst_ip": "8.8.8.8"
+      }
+    ]
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "status": "success",
+    "predictions": [
+      {
+        "src_ip": "192.168.1.100",
+        "is_threat": false,
+        "risk_score": -0.1502,
+        "metrics": {"total_events": 1.0, "unique_dst_ports": 1.0, "unique_dst_ips": 1.0}
+      }
+    ]
+  }
+  ```
 
-## License
+### POST `/train`
+Asynchronously triggers model retraining on the backend.
+- **Response:** `{"status": "processing", "message": "Model training started in background."}`
 
-MIT License - See LICENSE file.
+---
+
+## 6. Project Structure
+
+```text
+├── .env.example           # Configuration template
+├── Makefile               # Shortcuts for setup/testing
+├── pyproject.toml         # Python dependencies
+├── README.md              # Project documentation
+├── configs/               # Detector YAML config rules
+├── data/                  # Telemetry, PCAPs, Models
+│   ├── normalized/        # Parquet data ready for training
+│   └── models/            # Saved `.joblib` model artifacts
+├── scripts/               # Utility scripts
+├── src/                   # Core Codebase
+│   ├── api.py             # FastAPI backend
+│   ├── config.py          # Environment settings loader
+│   ├── main.py            # End-to-end batch pipeline
+│   ├── ingest/            # Zeek/Suricata log parsers & streaming consumers
+│   ├── normalize/         # Event schema normalizers
+│   ├── model/             # Machine Learning logic
+│   │   ├── train.py       # Isolation Forest training script
+│   │   └── inference.py   # Prediction wrapper
+│   └── ui/                # Streamlit Analyst Workbench
+└── tests/                 # Pytest suite
+```
+
+---
+
+## 7. Notes & Assumptions
+- **Dependency on Parsed Data:** The ML model (`train.py`) assumes that raw `.pcap` files have already been parsed into Zeek/Suricata logs and stored as `.parquet` files in `data/normalized/`. If the directory is empty, run `src/main.py` first.
+- **Mock External Systems:** Features connecting to Neo4j or Kafka (`live_ingestion.py`) will gracefully fallback or drop events if the infrastructure (Docker containers) is unavailable.
+- **Frontend Status:** The `src/ui/app.py` Streamlit frontend is included for demonstration purposes but is currently optional.

@@ -74,3 +74,19 @@ temp/
 
 # OS
 Thumbs.db
+
+# Environment
+.env
+venv/
+
+# Data & Models
+data/
+reports/runs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+

@@ -110,6 +110,25 @@ def run_pipeline(
     detections = detector.detect(normalized_df)
     logger.info(f"Generated {len(detections)} detections")
 
+    # Step 4.5: ML Anomaly Inference
+    try:
+        from src.model.inference import ThreatPredictor
+        logger.info("Running ML Anomaly Inference...")
+        predictor = ThreatPredictor()
+        if predictor.ready:
+            events_list = normalized_df.to_dict("records")
+            ml_predictions = predictor.predict(events_list)
+            
+            # Save ML predictions
+            ml_path = run_dir / "ml_predictions.json"
+            with open(ml_path, "w") as f:
+                json.dump(ml_predictions, f, indent=2)
+            logger.info(f"Saved {len(ml_predictions)} ML predictions to {ml_path}")
+        else:
+            logger.warning("ML Model not loaded (training required). Skipping ML Inference.")
+    except Exception as e:
+        logger.error(f"ML Inference failed: {e}")
+
     # Convert detections DataFrame to list of dicts for evaluation
     detections_list = []
     if len(detections) > 0:
