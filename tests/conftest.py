@@ -9,14 +9,14 @@ import pytest
 
 
 @pytest.fixture
-def temp_dir():
+def temp_dir() -> Path:
     """Create a temporary directory for test outputs."""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield Path(tmpdir)
 
 
 @pytest.fixture
-def sample_zeek_conn_log(temp_dir):
+def sample_zeek_conn_log(temp_dir: Path) -> Path:
     """Create a sample Zeek conn.log file."""
     log_file = temp_dir / "conn.log"
 
@@ -55,7 +55,7 @@ def sample_zeek_conn_log(temp_dir):
 
 
 @pytest.fixture
-def sample_zeek_dns_log(temp_dir):
+def sample_zeek_dns_log(temp_dir: Path) -> Path:
     """Create a sample Zeek dns.log file."""
     log_file = temp_dir / "dns.log"
 
@@ -83,7 +83,7 @@ def sample_zeek_dns_log(temp_dir):
 
 
 @pytest.fixture
-def sample_suricata_eve_json(temp_dir):
+def sample_suricata_eve_json(temp_dir: Path) -> Path:
     """Create a sample Suricata eve.json file."""
     log_file = temp_dir / "eve.json"
 
@@ -127,7 +127,7 @@ def sample_suricata_eve_json(temp_dir):
 
 
 @pytest.fixture
-def sample_normalized_df():
+def sample_normalized_df() -> pd.DataFrame:
     """Create a sample normalized events DataFrame."""
     data = {
         "ts": [1705312200.0, 1705312201.0, 1705312202.0],
@@ -149,7 +149,7 @@ def sample_normalized_df():
 
 
 @pytest.fixture
-def sample_detections_df():
+def sample_detections_df() -> pd.DataFrame:
     """Create a sample detections DataFrame."""
     data = {
         "detection_type": ["recon_scanning", "dns_beaconing"],
@@ -166,7 +166,7 @@ def sample_detections_df():
 
 
 @pytest.fixture
-def detector_config():
+def detector_config() -> dict:
     """Sample detector configuration."""
     return {
         "recon_scanning": {
@@ -188,7 +188,7 @@ def detector_config():
 
 
 @pytest.fixture
-def case_config():
+def case_config() -> dict:
     """Sample case assembly configuration."""
     return {
         "time_window_seconds": 1800,

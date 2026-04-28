@@ -1,94 +1,81 @@
+# =============================================================================
+# SENTINEL-RL Docker Compose
+# Services: Neo4j (required), FastAPI, Streamlit (optional)
+# =============================================================================
+
 services:
-  zeek:
-    image: blacktop/zeek:latest
-    container_name: soc-zeek
-    user: root
-    volumes:
-      - ./data/raw:/pcap:ro
-      - ./data/derived/zeek:/logs:rw
+  # --- Neo4j Graph Database (Section IV-A) ---
+  neo4j:
+    image: neo4j:5-community
+    container_name: sentinel-neo4j
+    ports:
+      - "7474:7474"   # Browser UI
+      - "7687:7687"   # Bolt protocol
     environment:
-      - PCAP_FILE=${PCAP_FILE:-}
-    entrypoint: ["sh", "-c"]
-    command:
-      - |
-        if [ -z "$PCAP_FILE" ]; then
-          echo 'Error: PCAP_FILE environment variable not set';
-          exit 1;
-        fi
-        if [ ! -f "/pcap/$PCAP_FILE" ]; then
-          echo "Error: PCAP file /pcap/$PCAP_FILE not found";
-          exit 1;
-        fi
-        echo "Processing PCAP: /pcap/$PCAP_FILE"
-        cd /logs
-        zeek -r "/pcap/$PCAP_FILE" -C LogAscii::use_json=T 2>&1 || true
-        if [ -f /logs/conn.log ]; then
-          echo "Generated conn.log"
-        else
-          echo "conn.log not generated"
-        fi
-        if [ -f /logs/dns.log ]; then
-          echo "Generated dns.log"
-        fi
-        echo "Zeek processing completed"
-    networks:
-      - soc-network
-    restart: "no"
-
-  suricata:
-    image: jasonish/suricata:latest
-    container_name: soc-suricata
-    user: root
+      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-password}
+      - NEO4J_server_memory_heap_initial__size=2g
+      - NEO4J_server_memory_heap_max__size=4g
+      - NEO4J_server_memory_pagecache_size=2g
     volumes:
-      - ./data/raw:/pcap:ro
-      - ./data/derived/suricata:/var/log/suricata:rw
-    environment:
-      - PCAP_FILE=${PCAP_FILE:-}
-    entrypoint: ["sh", "-c"]
-    command:
-      - |
-        if [ -z "$PCAP_FILE" ]; then
-          echo 'Error: PCAP_FILE environment variable not set';
-          exit 1;
-        fi
-        if [ ! -f "/pcap/$PCAP_FILE" ]; then
-          echo "Error: PCAP file /pcap/$PCAP_FILE not found";
-          exit 1;
-        fi
-        echo "Processing PCAP: /pcap/$PCAP_FILE"
-        suricata -r "/pcap/$PCAP_FILE" -l /var/log/suricata 2>&1 || true
-        if [ -f /var/log/suricata/eve.json ]; then
-          echo "Generated eve.json"
-        else
-          echo "eve.json not generated"
-        fi
-        echo "Suricata processing completed"
+      - neo4j_data:/data
+      - neo4j_logs:/logs
     networks:
-      - soc-network
-    restart: "no"
+      - sentinel-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "password", "RETURN 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  pipeline:
+  # --- FastAPI Policy Endpoint ---
+  api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: soc-pipeline
-    user: root
+    container_name: sentinel-api
+    ports:
+      - "8000:8000"
+    environment:
+      - NEO4J_URI=neo4j://neo4j:7687
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-password}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
     volumes:
       - ./data:/app/data:rw
-      - ./reports:/app/reports:rw
       - ./configs:/app/configs:ro
-      - ./src:/app/src:ro
-    environment:
-      - PCAP_FILE=${PCAP_FILE:-}
-      - RUN_TIMESTAMP=${RUN_TIMESTAMP:-}
-    command: python -m src.main --pcap /app/data/raw/$${PCAP_FILE}
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000
     networks:
-      - soc-network
+      - sentinel-network
     depends_on:
-      - zeek
-      - suricata
-    restart: "no"
+      neo4j:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Streamlit Analyst Workbench (Section IV-D) ---
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinel-ui
+    ports:
+      - "8501:8501"
+    environment:
+      - API_HOST=api
+      - API_PORT=8000
+    volumes:
+      - ./src:/app/src:ro
+    command: streamlit run src/ui/app.py --server.port 8501 --server.address 0.0.0.0
+    networks:
+      - sentinel-network
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
 
 networks:
-  soc-network:
+  sentinel-network:
     driver: bridge

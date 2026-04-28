@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Main entry point for the SOC-Informed Discovery pipeline."""
+"""SENTINEL-RL: Main entry point for batch pipeline execution."""
 
 import argparse
 import json
@@ -113,12 +113,13 @@ def run_pipeline(
     # Step 4.5: ML Anomaly Inference
     try:
         from src.model.inference import ThreatPredictor
+
         logger.info("Running ML Anomaly Inference...")
         predictor = ThreatPredictor()
         if predictor.ready:
             events_list = normalized_df.to_dict("records")
             ml_predictions = predictor.predict(events_list)
-            
+
             # Save ML predictions
             ml_path = run_dir / "ml_predictions.json"
             with open(ml_path, "w") as f:
@@ -217,9 +218,7 @@ def run_pipeline(
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description="SOC-Informed Discovery: Agent-Assisted Threat Detection Pipeline"
-    )
+    parser = argparse.ArgumentParser(description="SENTINEL-RL: Batch Pipeline Execution")
     parser.add_argument(
         "--pcap",
         type=str,

@@ -1,5 +1,10 @@
 """Critic agent for validating case completeness with 5-factor confidence model.
 
+Dual-mode operation:
+- Heuristic validation: Multi-factor confidence scoring for case evidence (always available)
+- LLM audit (optional): LangChain-powered action gating for the SENTINEL-RL orchestration
+  plane (Section IV-D, VII-E of the paper). Requires OPENAI_API_KEY.
+
 Confidence factors:
 1. Detection signal strength (from detector confidence)
 2. Evidence volume (scaled by min_evidence_rows)
@@ -17,18 +22,25 @@ logger = logging.getLogger(__name__)
 
 
 class CriticAgent:
-    """Validates cases using multi-factor confidence scoring."""
+    """Validates cases using multi-factor confidence scoring and optional LLM audit."""
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize critic agent.
 
         Args:
-            config: Case assembly configuration
+            config: Case assembly configuration. If None, uses defaults.
         """
+        if config is None:
+            config = {}
         self.config = config
         self.min_evidence_rows = config.get("min_evidence_rows", 5)
         self.confidence_threshold = config.get("confidence_threshold", 0.6)
         self._all_cases = []  # Track all cases for cross-case correlation
+        self._llm_chain = None  # Lazy-loaded LLM chain
+
+    # ================================================================
+    # Heuristic validation (always available, used by orchestrator)
+    # ================================================================
 
     def validate_case(
         self, case: dict[str, Any], all_cases: list[dict] | None = None
@@ -121,7 +133,6 @@ class CriticAgent:
             return 0.0, factor_scores
 
         # Factor 1: Detection signal strength
-        # Use the detector's confidence if available, else fall back to detection count
         detection_confidence = case.get("detection_confidence", 0.0)
         if detection_confidence > 0:
             factor_scores["detection_strength"] = min(1.0, detection_confidence)
@@ -159,8 +170,6 @@ class CriticAgent:
                 detection_ts_float = float(detection_ts)
                 diffs = [abs(t - detection_ts_float) for t in timestamps]
                 mean_diff = np.mean(diffs)
-                # Score: high when evidence is within 5 minutes of detection
-                # Decays exponentially with distance
                 factor_scores["temporal_concentration"] = float(
                     np.exp(-mean_diff / 300.0)  # 300s = 5 min decay constant
                 )
@@ -217,3 +226,81 @@ class CriticAgent:
                 return True
 
         return False
+
+    # ================================================================
+    # LLM-powered action audit (SENTINEL-RL Orchestration Plane)
+    # Section IV-D, VII-E: Tiered autonomy gating
+    # ================================================================
+
+    def _get_llm_chain(self):
+        """Lazy-load the LangChain audit chain."""
+        if self._llm_chain is not None:
+            return self._llm_chain
+
+        try:
+            from langchain.chains import LLMChain
+            from langchain.prompts import PromptTemplate
+            from langchain_openai import ChatOpenAI
+
+            from src.config import Config
+
+            if not Config.OPENAI_API_KEY:
+                return None
+
+            llm = ChatOpenAI(
+                api_key=Config.OPENAI_API_KEY,
+                model="gpt-4o-mini",
+                temperature=0.0,
+            )
+            prompt = PromptTemplate(
+                input_variables=["action_name", "narrative"],
+                template=(
+                    "You are an aggressive Security Operations Center (SOC) Audit Critic.\n"
+                    "The Triage agent has proposed the following response to an alert:\n"
+                    "- Action: {action_name}\n"
+                    "- Narrative: {narrative}\n\n"
+                    "CRITICAL TASK: If the action is 'TerminateAndOutputVerdict' (a Tier 3 "
+                    "irreversible action), you must ensure the narrative cites at least two "
+                    "distinct corroborating data points. If it is a Tier 1 or 2 action "
+                    "(QueryEDR, ExamineFirewall, etc.), it is acceptable.\n"
+                    "Return exactly 'APPROVED' if the action meets criteria, or "
+                    "'REJECTED' if it does not."
+                ),
+            )
+            self._llm_chain = LLMChain(llm=llm, prompt=prompt)
+            return self._llm_chain
+        except ImportError:
+            logger.warning("LangChain not available. LLM audit disabled.")
+            return None
+
+    def validate_action(self, action_name: str, narrative: str) -> tuple[bool, str]:
+        """LLM-powered action validation for tiered autonomy gating.
+
+        Validates that the proposed action meets the Critic Agent's evidence
+        requirements. TerminateAndOutputVerdict (Tier 3) actions require
+        at least two corroborating data points.
+
+        Args:
+            action_name: Name of the proposed action
+            narrative: Triage agent's narrative explanation
+
+        Returns:
+            Tuple of (is_approved, explanation)
+        """
+        chain = self._get_llm_chain()
+        if chain is None:
+            # Fallback: approve Tier 1/2, require manual review for Tier 3
+            if action_name == "TerminateAndOutputVerdict":
+                return False, "LLM unavailable — Tier 3 actions require manual review."
+            return True, "Approved by fallback (no LLM configured)."
+
+        try:
+            response = chain.run(action_name=action_name, narrative=narrative)
+            verdict = response.strip().upper()
+            if "APPROVED" in verdict:
+                return True, "Approved by Critic Agent."
+            else:
+                return False, "Rejected by Critic Agent: Insufficient evidence for action tier."
+        except Exception as e:
+            logger.error(f"Critic Agent LLM failed: {e}")
+            return False, "Critic Agent offline — Failsafe Deny."

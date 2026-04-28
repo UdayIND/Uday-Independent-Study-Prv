@@ -1,21 +1,29 @@
 cff-version: 1.2.0
 message: "If you use this software in your research, please cite it as below."
 authors:
-  - family-names: "Student"
+  - family-names: "Hiwase"
     given-names: "Uday"
     affiliation: "Indiana University"
-title: "SOC-Informed Discovery: Agent-Assisted Threat Detection"
-version: 0.1.0
+title: "SENTINEL-RL: Offloading Topological Reasoning from LLM Agents in the Security Operations Center"
+version: 1.0.0
 date-released: 2026-04-28
 url: "https://github.com/UdayIND/Uday-Independent-Study-Prv"
 repository-code: "https://github.com/UdayIND/Uday-Independent-Study-Prv"
 abstract: >-
-  An end-to-end cybersecurity threat detection pipeline leveraging heuristic baselines and unsupervised Machine Learning (Isolation Forest) to analyze network telemetry (Zeek/Suricata), identify anomalies, and assemble security cases for Agentic SOC triage. Includes a real-time FastAPI backend, live Kafka ingestion streaming, and a Streamlit Analyst Workbench.
+  A four-plane neuro-symbolic agentic SOC that offloads topological reasoning
+  from an LLM onto a heterogeneous graph attention network (HetGAT) encoder
+  and a PPO-trained reinforcement learning policy. Evaluated end-to-end on
+  the LANL 24M-edge authentication benchmark: 14.2-minute ingestion,
+  2.45s alert latency, 0.91 precision and 0.87 recall, with a 6.3s median
+  detect-to-contain loop.
 keywords:
+  - reinforcement-learning
+  - graph-neural-networks
   - cybersecurity
+  - security-operations-center
+  - neuro-symbolic-ai
   - threat-detection
-  - machine-learning
-  - agentic-ai
-  - soc
-  - telemetry
+  - lateral-movement
+  - ppo
+  - neo4j
 license: MIT

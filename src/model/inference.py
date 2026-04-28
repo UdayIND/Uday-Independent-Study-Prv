@@ -1,60 +1,103 @@
 """
-Model Inference Pipeline.
-Loads trained Anomaly Detection models to predict threats on new events.
+SENTINEL-RL Inference Pipeline.
+Loads trained PPO policy to recommend investigation actions.
 """
 
 import logging
-from typing import Dict, List, Any
+from typing import Any
 
-import joblib
-import pandas as pd
+import numpy as np
+import ray
+from ray.rllib.algorithms.ppo import PPOConfig
+from ray.tune.registry import register_env
 
 from src.config import Config
-from src.model.train import FeatureExtractor
+from src.model.env import SentinelInvestigationEnv
 
 logger = logging.getLogger(__name__)
 
+
 class ThreatPredictor:
+    """Loads a trained PPO policy and recommends investigation actions."""
+
     def __init__(self):
-        model_path = Config.MODEL_SAVE_DIR / f"isolation_forest_v_{Config.MODEL_VERSION}.joblib"
-        scaler_path = Config.MODEL_SAVE_DIR / f"scaler_v_{Config.MODEL_VERSION}.joblib"
-        
+        self.ready = False
+        checkpoint_dir = (Config.MODEL_SAVE_DIR / "ppo_policy_checkpoint").resolve()
+
+        if not checkpoint_dir.exists():
+            logger.warning(f"Checkpoint directory not found: {checkpoint_dir}")
+            return
+
+        # Find the latest checkpoint subfolder
+        subdirs = [d for d in checkpoint_dir.glob("checkpoint_*") if d.is_dir()]
+
+        if not subdirs:
+            logger.warning("No PPO checkpoint found. Please run the training script.")
+            return
+
+        latest_checkpoint = sorted(subdirs)[-1]
+
         try:
-            self.model = joblib.load(model_path)
-            self.scaler = joblib.load(scaler_path)
+            if not ray.is_initialized():
+                ray.init(ignore_reinit_error=True)
+
+            def env_creator(config):
+                return SentinelInvestigationEnv(config)
+
+            register_env("SentinelEnv-v0", env_creator)
+
+            # Reconstruct algo from checkpoint
+            config = PPOConfig().environment("SentinelEnv-v0").framework("torch")
+            self.algo = config.build()
+            self.algo.restore(str(latest_checkpoint))
+
             self.ready = True
+            logger.info(f"PPO Policy loaded from {latest_checkpoint}")
         except Exception as e:
-            logger.error(f"Failed to load model artifacts. Have you run the training script? Error: {e}")
+            logger.error(f"Failed to load PPO policy: {e}")
             self.ready = False
 
-    def predict(self, events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Predict threat likelihood for a list of event dictionaries."""
+    def predict(self, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Recommend threat actions for a batch of events.
+
+        In the full architecture, this would use the HetGAT encoder to
+        compress a 2-hop Neo4j subgraph into a 64-d state vector.
+        Here we use a random state for demonstration.
+
+        Args:
+            events: List of event dictionaries with at least 'src_ip'.
+
+        Returns:
+            List of action recommendations with action names and metrics.
+        """
         if not self.ready:
             raise RuntimeError("Model is not loaded.")
-            
-        df = pd.DataFrame(events)
-        features = FeatureExtractor.extract_features(df)
-        
-        if features.empty:
-            return []
-            
-        X_scaled = self.scaler.transform(features)
-        
-        # Isolation Forest returns -1 for anomaly, 1 for normal
-        predictions = self.model.predict(X_scaled)
-        scores = self.model.decision_function(X_scaled)  # Lower is more anomalous
-        
+
         results = []
-        for i, (src_ip, row) in enumerate(features.iterrows()):
-            is_threat = bool(predictions[i] == -1)
-            # Normalize score slightly for readability: invert so higher is more anomalous
-            risk_score = float(-scores[i]) 
-            
-            results.append({
-                "src_ip": src_ip,
-                "is_threat": is_threat,
-                "risk_score": round(risk_score, 4),
-                "metrics": row.to_dict()
-            })
-            
+        action_map = {
+            0: "QueryEDR",
+            1: "QueryAD",
+            2: "CheckThreatIntel",
+            3: "ExamineFirewall",
+            4: "TerminateAndOutputVerdict",
+        }
+
+        for event in events:
+            src_ip = event.get("src_ip", "unknown")
+
+            # Mock HetGAT extraction (production would call encoder.extract_subgraph_from_neo4j)
+            state = np.random.randn(64).astype(np.float32)
+
+            # Predict using PPO
+            action = self.algo.compute_single_action(state)
+
+            results.append(
+                {
+                    "src_ip": src_ip,
+                    "action_id": int(action),
+                    "action_name": action_map[int(action)],
+                    "metrics": {"state_norm": float(np.linalg.norm(state))},
+                }
+            )
+
         return results

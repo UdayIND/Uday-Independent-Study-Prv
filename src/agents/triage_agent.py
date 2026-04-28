@@ -1,4 +1,11 @@
-"""Triage agent for grouping detections into candidate cases."""
+"""Triage agent for grouping detections into candidate cases.
+
+Dual-mode operation:
+- Heuristic grouping: Groups raw detections into candidate cases by source IP,
+  detection type, and time window (always available, used by orchestrator)
+- LLM narrative synthesis (optional): Converts PPO policy output into analyst-readable
+  narratives for the SENTINEL-RL orchestration plane (Section IV-D). Requires OPENAI_API_KEY.
+"""
 
 import logging
 from datetime import timedelta
@@ -10,16 +17,23 @@ logger = logging.getLogger(__name__)
 
 
 class TriageAgent:
-    """Groups raw detections into candidate cases."""
+    """Groups raw detections into candidate cases and optionally synthesizes LLM narratives."""
 
-    def __init__(self, config: dict[str, Any]):
+    def __init__(self, config: dict[str, Any] | None = None):
         """Initialize triage agent.
 
         Args:
-            config: Case assembly configuration
+            config: Case assembly configuration. If None, uses defaults.
         """
+        if config is None:
+            config = {}
         self.config = config
         self.time_window = timedelta(seconds=config.get("time_window_seconds", 1800))
+        self._llm_chain = None  # Lazy-loaded LLM chain
+
+    # ================================================================
+    # Heuristic grouping (always available, used by orchestrator)
+    # ================================================================
 
     def group_detections(self, detections: pd.DataFrame) -> list[dict[str, Any]]:
         """Group detections into candidate cases.
@@ -93,3 +107,75 @@ class TriageAgent:
 
         logger.info(f"Triage agent grouped {len(detections)} detections into {len(cases)} cases")
         return cases
+
+    # ================================================================
+    # LLM narrative synthesis (SENTINEL-RL Orchestration Plane)
+    # Section IV-D: Converts PPO policy output into analyst narratives
+    # ================================================================
+
+    def _get_llm_chain(self):
+        """Lazy-load the LangChain narrative synthesis chain."""
+        if self._llm_chain is not None:
+            return self._llm_chain
+
+        try:
+            from langchain.chains import LLMChain
+            from langchain.prompts import PromptTemplate
+            from langchain_openai import ChatOpenAI
+
+            from src.config import Config
+
+            if not Config.OPENAI_API_KEY:
+                return None
+
+            llm = ChatOpenAI(
+                api_key=Config.OPENAI_API_KEY,
+                model="gpt-4o-mini",
+                temperature=0.1,
+            )
+            prompt = PromptTemplate(
+                input_variables=["src_ip", "action_name", "state_norm"],
+                template=(
+                    "You are an expert Security Operations Center (SOC) Triage Analyst.\n"
+                    "The SENTINEL-RL PPO Agent has recommended the following action based "
+                    "on the Neo4j authentication graph:\n"
+                    "- Suspicious Host IP: {src_ip}\n"
+                    "- Recommended Action: {action_name}\n"
+                    "- Graph State Density (Norm): {state_norm}\n\n"
+                    "Draft a clear, concise, 2-sentence narrative explanation for a human "
+                    "analyst explaining why this action makes sense given the context of "
+                    "lateral movement and credential abuse. Do NOT hallucinate evidence."
+                ),
+            )
+            self._llm_chain = LLMChain(llm=llm, prompt=prompt)
+            return self._llm_chain
+        except ImportError:
+            logger.warning("LangChain not available. LLM narrative synthesis disabled.")
+            return None
+
+    def synthesize_narrative(self, ppo_output: dict[str, Any]) -> str:
+        """Synthesize an analyst-readable narrative from PPO policy output.
+
+        Args:
+            ppo_output: Output from the PPO inference containing action_name,
+                       src_ip, and metrics.
+
+        Returns:
+            Narrative string for the analyst workbench.
+        """
+        chain = self._get_llm_chain()
+        if chain is None:
+            action = ppo_output.get("action_name", "Unknown")
+            src_ip = ppo_output.get("src_ip", "Unknown")
+            return f"[LLM Disabled] PPO recommends: {action} on {src_ip}."
+
+        try:
+            response = chain.run(
+                src_ip=ppo_output.get("src_ip", "Unknown"),
+                action_name=ppo_output.get("action_name", "Unknown"),
+                state_norm=round(ppo_output.get("metrics", {}).get("state_norm", 0.0), 3),
+            )
+            return response.strip()
+        except Exception as e:
+            logger.error(f"Triage LLM synthesis failed: {e}")
+            return f"Error generating narrative: {ppo_output.get('action_name')}"

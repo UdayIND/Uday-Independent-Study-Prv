@@ -143,7 +143,7 @@ class AgentOrchestrator:
         report_path = self.output_dir / "case_report.md"
 
         with open(report_path, "w") as f:
-            f.write("# SOC Case Report\n\n")
+            f.write("# SENTINEL-RL Case Report\n\n")
             f.write(f"**Generated Cases:** {len(cases)}\n\n")
             f.write("---\n\n")
 
